@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Source Studio — Live Operations HQ</title>
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;}
+  .app{max-width:1300px;margin:0 auto;padding:24px 18px 60px;}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .eyebrow{letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-size:11px;font-weight:700;}
+  h1{font-size:27px;line-height:1.15;margin:6px 0 0;}
+  h1 .g{background:linear-gradient(90deg,var(--blue),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .badge{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:11.5px;color:var(--dim);letter-spacing:.5px;}
+  .lede{font-size:14.5px;color:var(--dim);max-width:900px;margin:10px 0 18px;}
+  .lede b{color:var(--ink);}
+
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start;}
+  .grid > *{min-width:0;}
+  .stepnum{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+    border-radius:50%;background:var(--soft);color:var(--blue);font-size:10.5px;font-weight:700;margin-right:6px;}
+  h2{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--faint);
+    margin:0 0 8px;display:flex;align-items:center;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:14px;}
+  .empty{color:var(--faint);font-size:12.5px;margin:0;}
+
+  .drop{border:1.5px dashed var(--line);border-radius:10px;background:var(--panel2);
+    padding:18px 14px;text-align:center;transition:border-color .15s,background .15s;}
+  .drop.over{border-color:var(--green);background:var(--drop-over);}
+  .drop b{display:block;font-size:13px;margin-bottom:3px;}
+  .drop span{font-size:12px;color:var(--dim);}
+  .link{color:var(--accent);cursor:pointer;background:none;border:0;padding:0;font:inherit;text-decoration:underline;}
+  textarea{width:100%;min-height:120px;margin-top:9px;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:9px;padding:10px;font-size:11.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:6px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+  .btn:hover{border-color:var(--blue);}
+  .btn.primary{background:var(--soft);border-color:var(--soft-line);font-weight:600;}
+  .btn.primary:disabled{opacity:.4;cursor:not-allowed;border-color:var(--line);}
+  .btn.full{width:100%;}
+  .btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+
+  label.f{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin:9px 0 2px;}
+  select,input[type=text],input[type=search],input[type=number]{width:100%;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;font-family:inherit;}
+  .hint{font-size:11px;color:var(--faint);margin-top:4px;}
+  .auto{font-size:10px;color:var(--green);letter-spacing:.5px;}
+
+  .zrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center;margin-bottom:5px;}
+  .zrow .src{font-size:11.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:var(--shadow);}
+  .stagebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:8px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--dim);letter-spacing:.4px;}
+  .live{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--on-pill);background:var(--green);
+    padding:3px 9px;border-radius:6px;font-size:10.5px;}
+  .live.draft{background:var(--accent);}
+  .live .d{width:6px;height:6px;border-radius:50%;background:var(--on-pill);animation:bl 1.4s infinite;}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+  canvas{display:block;width:100%;height:auto;background:var(--map-bg);cursor:crosshair;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--dim);}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+
+  .counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px;margin-bottom:12px;}
+  .cnt{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;}
+  .cnt .k{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cnt .v{font-size:20px;font-weight:700;margin-top:1px;}
+
+  table{border-collapse:collapse;width:100%;font-size:11.5px;}
+  .tablewrap{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:var(--panel2);}
+  th,td{text-align:left;padding:5px 9px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{position:sticky;top:0;background:var(--panel);color:var(--dim);font-weight:600;font-size:10px;
+    letter-spacing:.8px;text-transform:uppercase;}
+
+  .plist{display:flex;flex-direction:column;gap:6px;}
+  .pitem{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:7px 10px;font-size:12px;}
+  .pitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pitem .st{font-size:9px;letter-spacing:.8px;text-transform:uppercase;border-radius:4px;padding:1px 6px;
+    background:var(--ok-bg);color:var(--green);border:1px solid var(--tag-green);}
+  .pitem .x{color:var(--faint);cursor:pointer;}
+  .pitem .x:hover{color:var(--ink);}
+
+  details.norm{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;}
+  details.norm summary{cursor:pointer;font-size:12.5px;color:var(--dim);}
+  details.norm pre{margin:10px 0 0;max-height:300px;overflow:auto;background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;padding:11px;font-size:11px;color:var(--dim);}
+  .log{font-size:11.5px;color:var(--faint);margin-top:8px;min-height:17px;}
+  .log.good{color:var(--green);}
+  .log.bad{color:var(--red);}
+  .foot{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--faint);font-size:12px;}
+  .foot a{color:var(--accent);text-decoration:none;}
+  @media(max-width:950px){ .grid{grid-template-columns:1fr;} h1{font-size:22px;} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div>
+      <div class="eyebrow">Live Operations HQ · Source Studio</div>
+      <h1>Connect a source, <span class="g">map it, promote it</span></h1>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="themebtn" data-theme-toggle type="button">☾ Dark mode</button><div class="badge">PARSED IN YOUR BROWSER · NOTHING SENT ANYWHERE</div></div>
+  </div>
+
+  <p class="lede">Load any file your systems already produce, confirm what each column means, and <b>promote it</b> — the studio writes a connector manifest the HQ can run on a schedule. Everything below is live: change a mapping and the map redraws.</p>
+
+  <div class="grid">
+    <aside>
+      <div class="card">
+        <h2><span class="stepnum">1</span>Load a source</h2>
+        <div class="drop" id="drop">
+          <b>Drop a .csv / .tsv / .json / .txt file</b>
+          <span>or <label class="link">choose a file<input type="file" id="file" hidden accept=".csv,.tsv,.txt,.json"></label>
+            · <button class="link" id="pasteBtn">paste</button>
+            · <button class="link" id="sampleBtn">try a sample</button></span>
+        </div>
+        <textarea id="paste" hidden placeholder="Paste CSV, TSV, pipe-delimited or JSON…"></textarea>
+        <div class="btnrow" id="pasteActions" hidden>
+          <button class="btn primary" id="pasteLoad">Read it</button>
+          <button class="btn" id="pasteCancel">Cancel</button>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="stepnum">2</span>Map the fields</h2>
+        <div id="mapWrap"><p class="empty">Load a source first.</p></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="stepnum">3</span>Promote the source</h2>
+        <div id="promoWrap"><p class="empty">Load a source first.</p></div>
+      </div>
+
+      <div class="card">
+        <h2>Promoted sources</h2>
+        <div class="plist" id="plist"><p class="empty">None yet.</p></div>
+        <div class="btnrow"><button class="btn" id="dlAll">↓ Export all manifests</button></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="counts" id="counts"></div>
+      <div class="stage">
+        <div class="stagebar">
+          <span id="stageTitle">No source loaded</span>
+          <span class="live draft" id="stageState"><span class="d"></span>DRAFT</span>
+        </div>
+        <canvas id="cv" width="1000" height="620"></canvas>
+        <div class="legend" id="legend"><span>Load a source to see it on the map.</span></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Rows as the engine read them</h2>
+        <div id="preview"><p class="empty">—</p></div>
+      </div>
+
+      <details class="norm">
+        <summary>Connector manifest — what "promote" writes</summary>
+        <pre id="json">—</pre>
+      </details>
+    </main>
+  </div>
+
+  <div class="foot">
+    Part of <b>Live Operations HQ</b> · <a href="index.html">← showcase</a> ·
+    <a href="pipeline.html">any source → a map ↗</a> · <a href="presentation.html">the production map ↗</a><br>
+    Promoted sources are saved in this browser only. In production the same manifest drives a scheduled connector on the server.
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="samples.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = function(s){ return document.querySelector(s); };
+var L = HQ.LAYOUTS, KEY = 'hq_promoted_sources_v1';
+var state = { ds:null, mapping:null, layoutKey:'airfield', zoneOverride:{}, built:null, promotedId:null };
+
+var view = new HQ.MapView($('#cv'), { onSelect: function(){} });
+view.start();
+window.addEventListener('hq-theme', function(){ view.readTheme(); });
+
+function log(msg, cls){ var el = $('#log'); el.textContent = msg || ''; el.className = 'log' + (cls ? ' ' + cls : ''); }
+
+/* ------------------------------ step 1: load ---------------------------- */
+
+function loadText(text, name, origin){
+  try {
+    state.ds = HQ.loadSource(text, name, origin || 'upload');
+  } catch(err){ log('Could not read ' + name + ': ' + err.message, 'bad'); return; }
+  state.mapping = HQ.inferMapping(state.ds);
+  state.zoneOverride = {};
+  state.promotedId = null;
+  $('#promoWrap').innerHTML = '';          /* rebuild step 3 for the new source */
+  log('Read ' + state.ds.rows.length + ' rows × ' + state.ds.cols.length + ' columns from ' +
+      name + ' (' + state.ds.format + '). Mapping guessed below — change anything that looks wrong.', 'good');
+  renderMapping(); rebuild();
+}
+
+var drop = $('#drop');
+['dragenter','dragover'].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); });
+});
+['dragleave','drop'].forEach(function(ev){
+  drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); });
+});
+drop.addEventListener('drop', function(e){
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f) readFile(f);
+  else if(e.dataTransfer) loadText(e.dataTransfer.getData('text'), 'dropped text', 'paste');
+});
+function readFile(f){
+  var r = new FileReader();
+  r.onload = function(){ loadText(String(r.result), f.name, 'upload'); };
+  r.onerror = function(){ log('Could not read ' + f.name + '.', 'bad'); };
+  r.readAsText(f);
+}
+$('#file').addEventListener('change', function(e){ if(e.target.files[0]) readFile(e.target.files[0]); e.target.value=''; });
+$('#pasteBtn').addEventListener('click', function(){ $('#paste').hidden=false; $('#pasteActions').hidden=false; $('#paste').focus(); });
+$('#pasteCancel').addEventListener('click', function(){ $('#paste').hidden=true; $('#pasteActions').hidden=true; $('#paste').value=''; });
+$('#pasteLoad').addEventListener('click', function(){
+  var t = $('#paste').value.trim();
+  if(!t){ log('Nothing pasted.', 'bad'); return; }
+  loadText(t, 'pasted data', 'paste');
+  $('#paste').hidden=true; $('#pasteActions').hidden=true; $('#paste').value='';
+});
+$('#sampleBtn').addEventListener('click', function(){
+  var set = window.HQ_SITE_SAMPLES[state.layoutKey] || window.HQ_SITE_SAMPLES.airfield;   /* this site's data */
+  var keys = Object.keys(set);
+  var k = keys[(keys.indexOf(window._lastSample||'') + 1) % keys.length];
+  window._lastSample = k;
+  var s = set[k];
+  loadText(s.text, s.name, s.label.replace(/^\S+\s/,''));
+});
+
+/* --------------------------- step 2: map fields ------------------------- */
+
+function opts(cols, sel, allowNone){
+  return (allowNone ? '<option value="">— none —</option>' : '') + cols.map(function(c){
+    return '<option value="' + HQ.esc(c.name) + '"' + (c.name===sel?' selected':'') + '>' +
+      HQ.esc(c.name) + ' · ' + c.kind + '</option>';
+  }).join('');
+}
+
+function renderMapping(){
+  var ds = state.ds, m = state.mapping;
+  if(!ds){ $('#mapWrap').innerHTML = '<p class="empty">Load a source first.</p>'; return; }
+  var lay = L[state.layoutKey], eff = HQ.kindFor(lay, m.kind);   /* planes stay on the airfield */
+  var h =
+    '<div class="auto">✓ guessed from your column names and values</div>' +
+    '<label class="f">Label — what to call each row</label><select id="mLabel">' + opts(ds.cols, m.label) + '</select>' +
+    '<label class="f">Area — where it belongs on the plan</label><select id="mZone">' + opts(ds.cols, m.zone, true) + '</select>' +
+    '<label class="f">State — how it should look</label><select id="mStatus">' + opts(ds.cols, m.status, true) + '</select>' +
+    '<label class="f">Render each row as</label><select id="mKind">' +
+      lay.kinds.map(function(k){ return '<option value="'+k+'"'+(k===eff?' selected':'')+'>'+HQ.KIND_LABEL[k]+'</option>'; }).join('') +
+    '</select>' +
+    '<label class="f">Site layout</label><select id="mLayout">' +
+      Object.keys(L).map(function(k){ return '<option value="'+k+'"'+(k===state.layoutKey?' selected':'')+'>'+L[k].label+'</option>'; }).join('') +
+    '</select>';
+  $('#mapWrap').innerHTML = h + '<div id="zoneEdit"></div>';
+
+  ['mLabel','mZone','mStatus','mKind'].forEach(function(id){
+    $('#'+id).addEventListener('change', function(){
+      state.mapping = {
+        label: $('#mLabel').value, zone: $('#mZone').value || null,
+        status: $('#mStatus').value || null,
+        kind: id === 'mKind' ? $('#mKind').value : state.mapping.kind
+      };
+      state.zoneOverride = {};
+      rebuild();
+    });
+  });
+  $('#mLayout').addEventListener('change', function(){
+    state.layoutKey = this.value; state.zoneOverride = {}; renderMapping(); rebuild();
+  });
+}
+
+function renderZoneEdit(){
+  var host = $('#zoneEdit'); if(!host) return;
+  var zm = state.built.zoneMap, keys = Object.keys(zm);
+  if(!keys.length){ host.innerHTML = ''; return; }
+  var zones = L[state.layoutKey].zones.filter(function(z){ return !z.road; });
+  var h = '<label class="f">Send each value to an area</label>';
+  keys.slice(0,20).forEach(function(k){
+    h += '<div class="zrow"><span class="src" title="'+HQ.esc(k)+'">'+HQ.esc(k)+
+         (zm[k].matched?'':' <span style="color:var(--accent)">*</span>')+'</span>' +
+         '<select data-zv="'+HQ.esc(k)+'">' + zones.map(function(z){
+            return '<option value="'+z.id+'"'+(z.id===zm[k].zone.id?' selected':'')+'>'+HQ.esc(z.name)+'</option>';
+         }).join('') + '</select></div>';
+  });
+  h += '<div class="hint">* no name match — the studio picked a fitting free area. Override it here.</div>';
+  var renamed = state.built.entities.filter(function(e){ return e.sourceLabel; });
+  if(renamed.length) h += '<div class="hint" style="margin-top:6px;">Shown as ' + HQ.KIND_WORD[renamed[0].kind] +
+    ' on this site, so labels are renamed (' + HQ.esc(renamed[0].sourceLabel) + ' → ' + HQ.esc(renamed[0].label) +
+    '). The source IDs stay on every record and in the manifest.</div>';
+  host.innerHTML = h;
+  host.querySelectorAll('select[data-zv]').forEach(function(sel){
+    sel.addEventListener('change', function(){
+      state.zoneOverride[this.getAttribute('data-zv')] = this.value;
+      rebuild(true);
+    });
+  });
+}
+
+/* ------------------------------- rebuild -------------------------------- */
+
+function rebuild(keepZoneEdit){
+  if(!state.ds) return;
+  var layout = L[state.layoutKey];
+  var built = HQ.buildEntities(state.ds, state.mapping, layout);
+
+  /* apply operator overrides, then re-place so the grid stays tidy */
+  var overrides = Object.keys(state.zoneOverride);
+  if(overrides.length){
+    overrides.forEach(function(v){
+      if(built.zoneMap[v]){
+        var z = layout.zones.filter(function(zz){ return zz.id === state.zoneOverride[v]; })[0];
+        if(z){ built.zoneMap[v].zone = z; built.zoneMap[v].matched = true; built.zoneMap[v].manual = true; }
+      }
+    });
+    built = HQ.buildEntities(state.ds, state.mapping, layout, built.zoneMap);
+  }
+  state.built = built;
+
+  view.set(layout, built.entities);
+  renderCounts(); renderLegend(); renderPreview(); renderManifest(); renderPromote();
+  if(!keepZoneEdit) renderZoneEdit(); else refreshZoneSelects();
+  $('#stageTitle').textContent = state.ds.name.toUpperCase() + ' · ' + state.ds.format.toUpperCase() +
+    ' → ' + layout.label.replace(/^\S+\s/,'').toUpperCase();
+  var st = $('#stageState');
+  st.innerHTML = '<span class="d"></span>' + (state.promotedId ? 'PROMOTED' : 'DRAFT');
+  st.className = 'live' + (state.promotedId ? '' : ' draft');
+}
+
+function refreshZoneSelects(){
+  var zm = state.built.zoneMap;
+  document.querySelectorAll('#zoneEdit select[data-zv]').forEach(function(sel){
+    var v = sel.getAttribute('data-zv');
+    if(zm[v]) sel.value = zm[v].zone.id;
+  });
+}
+
+function renderCounts(){
+  var ents = state.built.entities, by = {};
+  ents.forEach(function(e){ by[e.status] = (by[e.status]||0)+1; });
+  var h = '<div class="cnt"><div class="k">Rows mapped</div><div class="v">'+ents.length+'</div></div>';
+  ['moving','ok','waiting','alert','off'].forEach(function(k){
+    if(!by[k]) return;
+    h += '<div class="cnt"><div class="k">'+HQ.STATUS_LABEL[k]+'</div><div class="v" style="color:'+
+         HQ.statusColor(k)+'">'+by[k]+'</div></div>';
+  });
+  $('#counts').innerHTML = h;
+}
+
+function renderLegend(){
+  var by = {}; state.built.entities.forEach(function(e){ by[e.status]=1; });
+  var shown = {}; state.built.entities.forEach(function(e){ shown[e.kind] = 1; });
+  var h = '<span>One shape per row — rendered as <b style="color:var(--ink)">'+
+          Object.keys(shown).map(function(k){ return HQ.KIND_WORD[k] || k; }).join(' + ')+'</b></span>';
+  ['moving','ok','waiting','alert','off'].forEach(function(k){
+    if(!by[k]) return;
+    h += '<span><i style="background:'+HQ.statusColor(k)+'"></i>'+HQ.STATUS_LABEL[k]+'</span>';
+  });
+  $('#legend').innerHTML = h;
+}
+
+function renderPreview(){
+  var ds = state.ds, cols = ds.cols.slice(0,9), rows = ds.rows.slice(0,25);
+  var h = '<div class="tablewrap"><table><thead><tr>';
+  cols.forEach(function(c){ h += '<th>'+HQ.esc(c.name)+' <span style="color:var(--faint)">'+c.kind+'</span></th>'; });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    h += '<tr>';
+    cols.forEach(function(c){ var v=r[c.name]; h += '<td>'+HQ.esc(HQ.isBlank(v)?'—':v)+'</td>'; });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  if(ds.rows.length > rows.length || ds.cols.length > cols.length){
+    h += '<p class="hint">Showing '+rows.length+' of '+ds.rows.length+' rows, '+cols.length+' of '+ds.cols.length+' columns.</p>';
+  }
+  $('#preview').innerHTML = h;
+}
+
+/* --------------------------- step 3: promote ---------------------------- */
+
+function slug(s){ return String(s).toLowerCase().replace(/\.[^.]+$/,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+
+function manifest(){
+  var ds = state.ds, m = state.mapping, b = state.built, layout = L[state.layoutKey];
+  var areas = {};
+  Object.keys(b.zoneMap).forEach(function(k){
+    areas[k] = { area_id: b.zoneMap[k].zone.id, area: b.zoneMap[k].zone.name,
+                 resolved: b.zoneMap[k].manual ? 'manual' : (b.zoneMap[k].matched ? 'name match' : 'auto-assigned') };
+  });
+  return {
+    id: state.promotedId || ('src_' + slug(ds.name)),
+    name: ($('#pName') && $('#pName').value) || ds.name,
+    connector: {
+      transport: ($('#pTransport') && $('#pTransport').value) || 'upload',
+      endpoint: ($('#pEndpoint') && $('#pEndpoint').value) || ('/connectors/' + slug(ds.name)),
+      refresh_seconds: parseInt(($('#pRefresh') && $('#pRefresh').value) || '60', 10),
+      format: ds.format,
+      original_file: ds.name
+    },
+    schema: ds.cols.map(function(c){ return { name:c.name, type:c.kind, fill_rate: c.total ? Math.round(c.filled/c.total*100)/100 : 0 }; }),
+    mapping: { label:m.label, area:m.zone, state:m.status, render_as:HQ.kindFor(layout, m.kind),
+               relabel: b.entities.some(function(e){ return e.sourceLabel; }) ? 'site-fitting names; source label kept as source_label' : undefined },
+    layout: { id: state.layoutKey, name: layout.label.replace(/^\S+\s/,''), areas: layout.zones.map(function(z){ return z.id; }) },
+    area_routing: areas,
+    row_count: ds.rows.length,
+    promoted_at: state.promotedId ? (store().filter(function(x){ return x.id===state.promotedId; })[0]||{}).promoted_at : null
+  };
+}
+
+function renderManifest(){ $('#json').textContent = JSON.stringify(manifest(), null, 2); }
+
+function renderPromote(){
+  var ds = state.ds;
+  if(!ds){ $('#promoWrap').innerHTML = '<p class="empty">Load a source first.</p>'; return; }
+  if($('#pName')){ renderManifest(); return; }        /* already built — keep the operator's typing */
+  $('#promoWrap').innerHTML =
+    '<label class="f">Source name</label><input type="text" id="pName" value="'+HQ.esc(ds.name)+'">' +
+    '<label class="f">How it arrives</label><select id="pTransport">' +
+      ['upload','ftp','sftp','http api','database','email attachment','webhook'].map(function(t){
+        return '<option value="'+t+'">'+t.toUpperCase()+'</option>'; }).join('') + '</select>' +
+    '<label class="f">Endpoint the HQ will poll</label><input type="text" id="pEndpoint" value="/connectors/'+HQ.esc(slug(ds.name))+'">' +
+    '<label class="f">Refresh every (seconds)</label><input type="number" id="pRefresh" value="60" min="5" step="5">' +
+    '<div class="btnrow">' +
+      '<button class="btn primary full" id="pGo">⬆ Promote to Live HQ</button>' +
+      '<button class="btn" id="pDl">↓ connector.json</button>' +
+      '<button class="btn" id="pRows">↓ normalized rows</button>' +
+    '</div><div class="hint">Promoting registers the mapping so the HQ can pull this source on a schedule and drop it onto the same map.</div>';
+
+  ['pName','pTransport','pEndpoint','pRefresh'].forEach(function(id){
+    $('#'+id).addEventListener('input', renderManifest);
+    $('#'+id).addEventListener('change', renderManifest);
+  });
+  $('#pGo').addEventListener('click', promote);
+  $('#pDl').addEventListener('click', function(){
+    download(slug($('#pName').value || ds.name) + '.connector.json', JSON.stringify(manifest(), null, 2), 'application/json');
+  });
+  $('#pRows').addEventListener('click', function(){
+    var rows = state.built.entities.map(function(e){
+      return { id:'e'+(e.i+1), label:e.label, source_label:e.sourceLabel || undefined, kind:e.kind, area:e.zone.name, state:e.status, source:e.row };
+    });
+    download(slug($('#pName').value || ds.name) + '.normalized.json', JSON.stringify(rows, null, 2), 'application/json');
+  });
+  renderManifest();
+}
+
+/* ------------------------- promoted source registry --------------------- */
+
+function store(){
+  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e){ return []; }
+}
+function save(list){
+  try { localStorage.setItem(KEY, JSON.stringify(list)); }
+  catch(e){ log('Could not save locally (storage full or blocked) — download the manifest instead.', 'bad'); }
+}
+
+function promote(){
+  var mf = manifest();
+  mf.promoted_at = new Date().toISOString();
+  mf.sample_text = state.ds.rows.length <= 2000 ? null : null;   /* manifests stay small — rows stay at the source */
+  var list = store();
+  var at = -1;
+  for(var i=0;i<list.length;i++){ if(list[i].id === mf.id){ at = i; break; } }
+  if(at >= 0) list[at] = mf; else list.push(mf);
+  save(list);
+  state.promotedId = mf.id;
+  renderPromoted(); rebuild(true);
+  log('Promoted "' + mf.name + '" — the HQ will poll ' + mf.connector.endpoint +
+      ' every ' + mf.connector.refresh_seconds + 's and render ' + mf.row_count + ' rows as ' +
+      mf.mapping.render_as + '.', 'good');
+}
+
+function renderPromoted(){
+  var list = store(), host = $('#plist');
+  if(!list.length){ host.innerHTML = '<p class="empty">None yet.</p>'; return; }
+  host.innerHTML = list.map(function(p, i){
+    return '<div class="pitem"><span class="nm" title="'+HQ.esc(p.name)+'">'+HQ.esc(p.name)+
+      '<br><span style="color:var(--faint);font-size:10.5px;">'+HQ.esc(p.connector.transport)+' · '+
+      p.row_count+' rows · every '+p.connector.refresh_seconds+'s</span></span>' +
+      '<span class="st">live</span><span class="x" data-del="'+i+'" title="Remove">✕</span></div>';
+  }).join('');
+  host.querySelectorAll('[data-del]').forEach(function(x){
+    x.addEventListener('click', function(){
+      var list2 = store(); var gone = list2.splice(parseInt(this.getAttribute('data-del'),10),1)[0];
+      save(list2);
+      if(gone && gone.id === state.promotedId){ state.promotedId = null; rebuild(true); }
+      renderPromoted();
+      log('Removed "' + (gone ? gone.name : 'source') + '" from the registry.');
+    });
+  });
+}
+
+$('#dlAll').addEventListener('click', function(){
+  var list = store();
+  if(!list.length){ log('Nothing promoted yet.', 'bad'); return; }
+  download('live-ops-hq.connectors.json', JSON.stringify({ connectors:list }, null, 2), 'application/json');
+});
+
+function download(filename, text, mime){
+  var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+renderPromoted();
+})();
+</script>
+</body>
+</html>

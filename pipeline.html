@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Any Source → A Live Map — Live Operations HQ</title>
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<style>
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;}
+  .app{max-width:1240px;margin:0 auto;padding:24px 18px 60px;}
+
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .eyebrow{letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-size:11px;font-weight:700;}
+  h1{font-size:28px;line-height:1.15;margin:6px 0 0;}
+  h1 .g{background:linear-gradient(90deg,var(--blue),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .badge{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:11.5px;color:var(--dim);letter-spacing:.5px;}
+  .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:bl 1.6s infinite;}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+  .lede{font-size:15px;color:var(--dim);max-width:900px;margin:12px 0 18px;}
+  .lede b{color:var(--ink);}
+
+  .pickrow{margin-bottom:12px;}
+  .picklbl{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--faint);margin-bottom:6px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:20px;
+    padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;}
+  .chip:hover{border-color:var(--blue);}
+  .chip.on{border-color:var(--blue);background:var(--soft);}
+  .chip small{color:var(--faint);}
+
+  .grid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-top:16px;align-items:start;}
+  .grid > *{min-width:0;}
+  h2{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--faint);margin:0 0 8px;}
+  .side h2{margin-top:18px;}
+  .side h2:first-child{margin-top:0;}
+  .empty{color:var(--faint);font-size:12.5px;margin:0;}
+
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:var(--shadow);}
+  .stagebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:8px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--dim);letter-spacing:.4px;}
+  .live{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--on-pill);background:var(--green);
+    padding:3px 9px;border-radius:6px;font-size:10.5px;}
+  .live .d{width:6px;height:6px;border-radius:50%;background:var(--on-pill);animation:bl 1.4s infinite;}
+  canvas{display:block;width:100%;height:auto;background:var(--map-bg);cursor:crosshair;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim);}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+
+  .counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px;margin-bottom:12px;}
+  .cnt{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;}
+  .cnt .k{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cnt .v{font-size:20px;font-weight:700;margin-top:1px;}
+
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 12px;font-size:12.5px;}
+  .box + .box{margin-top:8px;}
+  label.f{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin:7px 0 2px;}
+  select,input[type=search]{width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:5px 8px;font-size:12.5px;font-family:inherit;}
+
+  .maps{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+  .mapchip{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:10.5px;color:var(--dim);}
+  .mapchip b{color:var(--ink);font-weight:600;}
+
+  .col{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:11.5px;margin-bottom:5px;}
+  .col .r1{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .col .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tag{font-size:9px;letter-spacing:.8px;text-transform:uppercase;border:1px solid var(--line);
+    border-radius:4px;padding:1px 5px;color:var(--dim);flex:none;}
+  .tag.number{color:var(--blue);border-color:var(--tag-blue);}
+  .tag.date{color:var(--green);border-color:var(--tag-green);}
+  .tag.category{color:var(--accent);border-color:var(--tag-amber);}
+  .tag.bool{color:var(--violet);border-color:var(--tag-violet);}
+  .col .meta{color:var(--faint);font-size:10px;margin-top:1px;}
+
+  .detail{min-height:54px;}
+  .detail .t{font-size:14px;font-weight:700;}
+  .detail .kv{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--dim);
+    border-top:1px solid var(--line);padding:3px 0;}
+  .detail .kv b{color:var(--ink);font-weight:500;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  details.norm{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;}
+  details.norm summary{cursor:pointer;font-size:12.5px;color:var(--dim);}
+  details.norm pre{margin:10px 0 0;max-height:260px;overflow:auto;background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;padding:11px;font-size:11px;color:var(--dim);}
+  .log{font-size:11.5px;color:var(--faint);margin-top:8px;min-height:17px;}
+  .foot{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--faint);font-size:12px;}
+  .foot a{color:var(--accent);text-decoration:none;}
+  @media(max-width:900px){ .grid{grid-template-columns:1fr;} h1{font-size:22px;} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div>
+      <div class="eyebrow">Live Operations HQ · Any source</div>
+      <h1>Whatever your data is, <span class="g">it becomes a map</span></h1>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="themebtn" data-theme-toggle type="button">☾ Dark mode</button><div class="badge"><span class="dot"></span>LIVE DEMO · SYNTHETIC DATA</div></div>
+  </div>
+
+  <p class="lede">Your business already produces the data — a <b>CSV export</b>, a <b>nightly FTP drop</b>, a <b>spreadsheet</b>, a <b>vendor report</b>, an <b>API</b>, a <b>SQL dump</b>. This engine reads any of them, works out what each column means, and turns the rows into <b>people, vehicles, aircraft and assets moving on your own floor plan</b>. Pick a source and a site below — the map rebuilds itself.</p>
+
+  <div class="pickrow">
+    <div class="picklbl">1 · Your data comes in as</div>
+    <div class="chips" id="sources"></div>
+  </div>
+  <div class="pickrow">
+    <div class="picklbl">2 · Your business looks like</div>
+    <div class="chips" id="layouts"></div>
+  </div>
+  <div class="log" id="log"></div>
+
+  <div class="grid">
+    <main>
+      <div class="counts" id="counts"></div>
+      <div class="stage">
+        <div class="stagebar">
+          <span id="stageTitle">—</span>
+          <span class="live"><span class="d"></span>LIVE</span>
+        </div>
+        <canvas id="cv" width="1000" height="620"></canvas>
+        <div class="legend" id="legend"></div>
+      </div>
+      <details class="norm">
+        <summary>What the engine produced — one normalized shape, whatever came in</summary>
+        <pre id="json">—</pre>
+      </details>
+    </main>
+
+    <aside class="side">
+      <h2>Selected</h2>
+      <div class="box detail" id="detail"><p class="empty">Click anything on the map.</p></div>
+
+      <h2>Find</h2>
+      <div class="box"><input type="search" id="q" placeholder="Search by name, tag, status…"></div>
+
+      <h2>How it read your file</h2>
+      <div class="box">
+        <label class="f">Label (what to call each one)</label><select id="mLabel"></select>
+        <label class="f">Place (which area it belongs to)</label><select id="mZone"></select>
+        <label class="f">State (how it should look)</label><select id="mStatus"></select>
+        <label class="f">Show each row as</label><select id="mKind"></select>
+        <div class="maps" id="zoneMap"></div>
+      </div>
+
+      <h2>Columns it found</h2>
+      <div id="schema"><p class="empty">—</p></div>
+    </aside>
+  </div>
+
+  <div class="foot">
+    Part of <b>Live Operations HQ</b> · <a href="index.html">← back to the showcase</a> · <a href="presentation.html">the production map ↗</a><br>
+    All data shown is synthetic. Parsing, interpretation and rendering all run in the page — no server, no dependencies.
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="samples.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = function(s){ return document.querySelector(s); };
+var SITES = window.HQ_SITE_SAMPLES, L = HQ.LAYOUTS;
+function S(){ return SITES[state.layoutKey] || SITES.airfield; }   /* this site's own data */
+var state = { srcKey:'api', layoutKey:'airfield', ds:null, mapping:null, built:null };
+
+var view = new HQ.MapView($('#cv'), { onSelect: showDetail });
+view.start();
+window.addEventListener('hq-theme', function(){ view.readTheme(); });
+
+/* ------------------------------- choosers ------------------------------- */
+
+function chips(host, items, activeKey, onPick){
+  host.innerHTML = items.map(function(it){
+    return '<button class="chip'+(it.key===activeKey?' on':'')+'" data-k="'+it.key+'">'+
+      it.label + (it.sub ? ' <small>· '+HQ.esc(it.sub)+'</small>' : '') + '</button>';
+  }).join('');
+  host.onclick = function(e){
+    var b = e.target.closest && e.target.closest('.chip');
+    if(b) onPick(b.getAttribute('data-k'));
+  };
+}
+
+function renderChoosers(){
+  var set = S();
+  chips($('#sources'), Object.keys(set).map(function(k){
+    return { key:k, label:set[k].label, sub:set[k].name };
+  }), state.srcKey, function(k){ state.srcKey = k; load(); });
+
+  chips($('#layouts'), Object.keys(L).map(function(k){
+    return { key:k, label:L[k].label };
+  }), state.layoutKey, function(k){ state.layoutKey = k; load(); });   /* switch to that site's data */
+}
+
+/* -------------------------------- loading ------------------------------- */
+
+function load(){
+  var s = S()[state.srcKey];
+  try {
+    state.ds = HQ.loadSource(s.text, s.name, s.label.replace(/^\S+\s/,''));
+  } catch(err){
+    $('#log').textContent = 'Could not read ' + s.name + ': ' + err.message;
+    return;
+  }
+  state.mapping = HQ.inferMapping(state.ds);
+  fillMapping();
+  rebuild();
+  $('#log').textContent = s.name + ' — ' + s.note + '. Read ' + state.ds.rows.length +
+    ' rows × ' + state.ds.cols.length + ' columns, no configuration.';
+}
+
+function rebuild(){
+  if(!state.ds) return;
+  var layout = L[state.layoutKey];
+  state.built = HQ.buildEntities(state.ds, state.mapping, layout);
+  view.set(layout, state.built.entities);
+  showDetail(null);
+  renderChoosers(); renderCounts(); renderLegend(); renderZoneMap(); renderSchema(); renderJson();
+  $('#stageTitle').textContent =
+    state.ds.name.toUpperCase() + ' · ' + state.ds.format.toUpperCase() +
+    ' → ' + layout.label.replace(/^\S+\s/,'').toUpperCase();
+}
+
+/* ------------------------------- panels --------------------------------- */
+
+function renderCounts(){
+  var ents = state.built.entities, by = {};
+  ents.forEach(function(e){ by[e.status] = (by[e.status]||0) + 1; });
+  var h = '<div class="cnt"><div class="k">On the map</div><div class="v">' + ents.length + '</div></div>';
+  ['moving','ok','waiting','alert','off'].forEach(function(k){
+    if(!by[k]) return;
+    h += '<div class="cnt"><div class="k">' + HQ.STATUS_LABEL[k] + '</div>' +
+         '<div class="v" style="color:' + HQ.statusColor(k) + '">' + by[k] + '</div></div>';
+  });
+  $('#counts').innerHTML = h;
+}
+
+function renderLegend(){
+  var by = {};
+  state.built.entities.forEach(function(e){ by[e.status] = 1; });
+  var shown = {};
+  state.built.entities.forEach(function(e){ shown[e.kind] = 1; });
+  var h = '<span>Each shape is one row — shown as <b style="color:var(--ink)">' +
+          Object.keys(shown).map(function(k){ return HQ.KIND_WORD[k] || k; }).join(' + ') + '</b></span>';
+  ['moving','ok','waiting','alert','off'].forEach(function(k){
+    if(!by[k]) return;
+    h += '<span><i style="background:' + HQ.statusColor(k) + '"></i>' + HQ.STATUS_LABEL[k] + '</span>';
+  });
+  $('#legend').innerHTML = h;
+}
+
+function renderZoneMap(){
+  var zm = state.built.zoneMap, keys = Object.keys(zm);
+  var renamed = state.built.entities.filter(function(e){ return e.sourceLabel; });
+  var note = renamed.length
+    ? '<span class="mapchip" title="These rows are shown as ' + HQ.KIND_WORD[renamed[0].kind] + ' on this site, so they get matching names. The source ID stays on each record.">Renamed for this site: ' +
+      renamed.slice(0,3).map(function(e){ return HQ.esc(e.sourceLabel) + ' → <b>' + HQ.esc(e.label) + '</b>'; }).join(', ') +
+      (renamed.length > 3 ? ' +' + (renamed.length - 3) : '') + '</span>'
+    : '';
+  if(!keys.length){ $('#zoneMap').innerHTML = note; return; }
+  $('#zoneMap').innerHTML = note + keys.slice(0,14).map(function(k){
+    return '<span class="mapchip" title="' + (zm[k].matched ? 'matched by name' : 'no name match — assigned an area') + '">' +
+      HQ.esc(k) + ' → <b>' + HQ.esc(zm[k].zone.name) + '</b>' + (zm[k].matched ? '' : ' *') + '</span>';
+  }).join('');
+}
+
+function renderSchema(){
+  $('#schema').innerHTML = state.ds.cols.map(function(c){
+    var pct = c.total ? Math.round(c.filled/c.total*100) : 0;
+    return '<div class="col"><div class="r1"><span class="nm" title="' + HQ.esc(c.name) + '">' + HQ.esc(c.name) + '</span>' +
+      '<span class="tag ' + c.kind + '">' + c.kind + '</span></div>' +
+      '<div class="meta">' + c.distinct + ' distinct · ' + pct + '% filled</div></div>';
+  }).join('');
+}
+
+function renderJson(){
+  var ds = state.ds, m = state.mapping;
+  var sample = state.built.entities.slice(0,2).map(function(e){
+    return { id:'e'+(e.i+1), label:e.label, source_label:e.sourceLabel || undefined, kind:e.kind, area:e.zone.name, state:e.status, source_row:e.row };
+  });
+  $('#json').textContent = JSON.stringify({
+    source: ds.origin + ':' + ds.name,
+    format: ds.format,
+    read_at: ds.loadedAt,
+    interpreted_as: { label:m.label, area:m.zone, state:m.status, shown_as:HQ.kindFor(L[state.layoutKey], m.kind) },
+    entity_count: state.built.entities.length,
+    entities: sample
+  }, null, 2) + (state.built.entities.length > 2 ? '\n… ' + (state.built.entities.length - 2) + ' more' : '');
+}
+
+function showDetail(e){
+  if(!e){ $('#detail').innerHTML = '<p class="empty">Click anything on the map.</p>'; return; }
+  var h = '<div class="t" style="color:' + HQ.statusColor(e.status) + '">' + HQ.esc(e.label) + '</div>';
+  h += '<div style="font-size:11.5px;color:var(--dim);margin-bottom:5px;">' +
+       HQ.esc(HQ.STATUS_LABEL[e.status]) + ' · ' + HQ.esc(e.zone.name) + '</div>';
+  if(e.sourceLabel) h += '<div style="font-size:11px;color:var(--faint);margin-bottom:5px;">Shown as ' +
+       HQ.esc(HQ.KIND_WORD[e.kind].replace(/s$/,'')) + ' here · source ID <b style="color:var(--ink)">' + HQ.esc(e.sourceLabel) + '</b></div>';
+  state.ds.cols.forEach(function(c){
+    var v = e.row[c.name];
+    h += '<div class="kv"><span>' + HQ.esc(c.name) + '</span><b title="' + HQ.esc(HQ.isBlank(v)?'—':v) + '">' +
+         HQ.esc(HQ.isBlank(v) ? '—' : v) + '</b></div>';
+  });
+  $('#detail').innerHTML = h;
+}
+
+/* ---------------------------- mapping controls --------------------------- */
+
+function opts(cols, sel, allowNone){
+  var h = allowNone ? '<option value="">— none —</option>' : '';
+  return h + cols.map(function(c){
+    return '<option value="' + HQ.esc(c.name) + '"' + (c.name===sel?' selected':'') + '>' + HQ.esc(c.name) + '</option>';
+  }).join('');
+}
+
+function fillMapping(){
+  var c = state.ds.cols, m = state.mapping;
+  $('#mLabel').innerHTML  = opts(c, m.label);
+  $('#mZone').innerHTML   = opts(c, m.zone, true);
+  $('#mStatus').innerHTML = opts(c, m.status, true);
+  fillKinds();
+}
+
+/* only the shapes this kind of site has — planes stay on the airfield */
+function fillKinds(){
+  var lay = L[state.layoutKey], eff = HQ.kindFor(lay, state.mapping.kind);
+  $('#mKind').innerHTML = lay.kinds.map(function(k){
+    return '<option value="' + k + '"' + (k===eff?' selected':'') + '>' + HQ.KIND_LABEL[k] + '</option>';
+  }).join('');
+}
+
+['#mLabel','#mZone','#mStatus','#mKind'].forEach(function(id){
+  $(id).addEventListener('change', function(){
+    state.mapping = {
+      label: $('#mLabel').value, zone: $('#mZone').value || null,
+      status: $('#mStatus').value || null,
+      kind: id === '#mKind' ? $('#mKind').value : state.mapping.kind   /* keep the source's own kind */
+    };
+    rebuild();
+  });
+});
+
+$('#q').addEventListener('input', function(){ view.setQuery(this.value); });
+
+renderChoosers();
+load();
+})();
+</script>
+</body>
+</html>

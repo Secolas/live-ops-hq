@@ -1,0 +1,41 @@
+/* Live Operations HQ — light / dark tokens, shared by every page.
+   Light is the default; theme.js sets data-theme="dark" when chosen. */
+:root{
+  color-scheme: light;
+  --bg:#f5f6f8; --panel:#ffffff; --panel2:#f0f2f5; --line:#e1e4ea;
+  --ink:#151922; --dim:#566070; --faint:#878f9d; --accent:#b97500;
+  --blue:#2b7bbf; --green:#0f9960; --red:#cc4f36; --violet:#8448c4;
+  --soft:#e8f1fa; --soft-line:#9cc3e6;           /* selected chip, primary button */
+  --drop-over:#e8f6ef;
+  --ok-bg:#e3f5ec;
+  --on-pill:#ffffff;                             /* text on a filled status pill */
+  --shadow:0 10px 34px rgba(20,30,50,.09);
+  --tag-blue:#b8d4ec; --tag-green:#b2e0cb; --tag-amber:#ecd6a6; --tag-violet:#d7c4ef;
+
+  --map-bg:#cfd3da; --map-grid:rgba(20,30,50,.045); --map-zone:#ffffff; --map-road:#e2e6ec;
+  --map-line:#d4d9e1; --map-dash:#b4bdca; --map-label:#6a7383; --map-count:#151922;
+  --map-text:#454f61; --map-text-sel:#151922; --map-outline:#1a2130; --map-wheel:#1a2130;
+  --map-shadow:rgba(20,30,50,.15); --map-ring:rgba(20,30,50,.35); --map-glass:rgba(20,30,45,.42);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0d0f15; --panel:#141821; --panel2:#0e1119; --line:#232835;
+  --ink:#e8ebf2; --dim:#99a2b4; --faint:#6f7789; --accent:#f0a500;
+  --blue:#4ea8de; --green:#22e39c; --red:#e0664f; --violet:#c77dff;
+  --soft:#182030; --soft-line:#2c4057;
+  --drop-over:#101a18;
+  --ok-bg:#13301f;
+  --on-pill:#0a0c12;
+  --shadow:0 10px 40px rgba(0,0,0,.45);
+  --tag-blue:#2a4a63; --tag-green:#1e5c45; --tag-amber:#5c4718; --tag-violet:#4a3360;
+
+  --map-bg:#1b1e26; --map-grid:rgba(255,255,255,.025); --map-zone:#11151d; --map-road:#0f1118;
+  --map-line:#232835; --map-dash:#2a3140; --map-label:#7f899c; --map-count:#e8ebf2;
+  --map-text:#a3acbd; --map-text-sel:#e8ebf2; --map-outline:#05070b; --map-wheel:#56607a;
+  --map-shadow:rgba(0,0,0,.42); --map-ring:rgba(255,255,255,.35); --map-glass:rgba(10,14,22,.5);
+}
+
+.themebtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:20px;padding:5px 12px;font:inherit;font-size:11.5px;
+  letter-spacing:.4px;cursor:pointer;}
+.themebtn:hover{border-color:var(--blue);}
