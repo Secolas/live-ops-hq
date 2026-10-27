@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Operations HQ — Real-Time Data Command Center</title>
+<style>
+  :root{ --bg:#0d0f15; --panel:#141821; --line:#232835; --ink:#e8ebf2; --dim:#99a2b4; --accent:#f0a500;
+    --c-ins:#4ea8de; --c-stu:#f0a500; --c-off:#c77dff; --c-mec:#e0664f; --c-fd:#22e39c; }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;line-height:1.55;}
+  .wrap{max-width:1100px;margin:0 auto;padding:40px 20px 70px;}
+  .eyebrow{letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-size:12px;font-weight:700;}
+  h1{font-size:36px;line-height:1.12;margin:8px 0 10px;}
+  h1 .g{background:linear-gradient(90deg,#4ea8de,#22e39c);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lede{font-size:17px;color:var(--dim);max-width:760px;margin:0 0 18px;}
+  .lede b{color:var(--ink);}
+  .srcrow{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 26px;}
+  .src{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;}
+  .src .d{width:8px;height:8px;border-radius:50%;}
+  .stagewrap{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.45);background:#0a0c12;}
+  .stage-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--dim);letter-spacing:.5px;}
+  .stage-live{font-weight:700;color:#0a0c12;background:var(--c-fd);padding:3px 9px;border-radius:6px;display:flex;align-items:center;gap:5px;}
+  .stage-live .dot{width:7px;height:7px;border-radius:50%;background:#0a0c12;animation:bl 1.4s infinite;}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+  iframe.demo{display:block;width:100%;height:660px;border:0;background:#0a0c12;}
+  .openlink{font-size:12.5px;color:var(--dim);margin:8px 2px 0;}
+  .openlink a{color:var(--accent);text-decoration:none;}
+  h2{font-size:21px;margin:50px 0 6px;}
+  .sub{color:var(--dim);margin:0 0 20px;font-size:14.5px;}
+  .flow{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;}
+  .flow-col{display:flex;flex-direction:column;gap:9px;}
+  .node{background:#0e1119;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;}
+  .node b{display:block;} .node small{color:var(--dim);font-size:11.5px;}
+  .hub{background:linear-gradient(160deg,#172033,#121722);border:1px solid #2c4057;border-radius:14px;padding:18px 16px;text-align:center;min-width:150px;}
+  .hub .big{font-size:15px;font-weight:800;} .hub .sm{font-size:11.5px;color:var(--dim);margin-top:3px;}
+  .arrow{font-size:26px;color:#3a4759;text-align:center;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .card h3{margin:0 0 6px;font-size:14.5px;} .card p{margin:0;font-size:13px;color:var(--dim);} .card .ic{font-size:20px;}
+  .proof{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;font-size:14px;}
+  .proof li{margin:5px 0;color:var(--dim);} .proof b{color:var(--ink);}
+  .pill{display:inline-block;background:#0e1119;border:1px solid var(--line);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--dim);margin:3px 4px 0 0;}
+  footer{margin-top:50px;border-top:1px solid var(--line);padding-top:18px;color:var(--dim);font-size:13px;}
+  .note{font-size:12px;color:#6f7789;margin-top:8px;}
+  @media(max-width:640px){ h1{font-size:27px} .flow{grid-template-columns:1fr;text-align:center} .arrow{transform:rotate(90deg)} iframe.demo{height:460px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Integration &amp; Data Visualization</div>
+  <h1>One system to <span class="g">see everything</span> move</h1>
+  <p class="lede">Give me any source a business runs on — <b>a punch-in/out clock, an LMS or training-hours system, scheduling &amp; dispatch, GPS trackers, live radar, shipping &amp; logistics, moving-parts &amp; asset tracking, IoT sensors</b> — and I connect them into <b>one real-time visual command center</b> that anyone can read at a glance. The live demo below is the real thing, running on anonymized data.</p>
+
+  <div class="srcrow">
+    <span class="src"><span class="d" style="background:var(--c-fd)"></span>Punch in / out (any clock)</span>
+    <span class="src"><span class="d" style="background:#9b8cff"></span>LMS / training hours</span>
+    <span class="src"><span class="d" style="background:var(--c-ins)"></span>Scheduling / dispatch</span>
+    <span class="src"><span class="d" style="background:var(--c-stu)"></span>GPS telematics</span>
+    <span class="src"><span class="d" style="background:#e0664f"></span>Live radar (ADS-B)</span>
+    <span class="src"><span class="d" style="background:#4ecdc4"></span>Shipping / logistics</span>
+    <span class="src"><span class="d" style="background:#f78da7"></span>Moving parts / assets</span>
+    <span class="src"><span class="d" style="background:#c77dff"></span>Weather</span>
+    <span class="src"><span class="d" style="background:#7a8394"></span>SQL databases</span>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stage-bar"><span>LIVE OPS MAP · ANONYMIZED DEMO DATA</span><span class="stage-live"><span class="dot"></span>LIVE</span></div>
+    <iframe class="demo" src="presentation.html" title="Live Operations HQ demo" loading="lazy"></iframe>
+  </div>
+  <p class="openlink">Tip: click people, aircraft or vehicles for detail, search by name/tail, or hit <b>⏱ Replay day</b> to scrub the day. &nbsp;·&nbsp; <a href="presentation.html" target="_blank">Open the demo full-screen ↗</a></p>
+
+  <h2>Every source, one view</h2>
+  <p class="sub">Each system speaks its own language. I normalize them behind a small adapter layer, then render them together — live.</p>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="node"><b>🕑 Any punch clock</b><small>Who's on-site, by role</small></div>
+      <div class="node"><b>🎓 LMS / training hours</b><small>Progress &amp; activity</small></div>
+      <div class="node"><b>🚗 GPS telematics</b><small>REST API + token auth → live positions</small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-col" style="align-items:center;">
+      <div class="hub"><div class="big">LIVE HQ</div><div class="sm">normalize · correlate · render · replay</div></div>
+      <div class="arrow" style="font-size:22px;">↓</div>
+      <div class="node" style="text-align:center;"><b>🗺️ One real-time map</b><small>searchable · clickable · role-secured</small></div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top:14px;">
+    <div class="flow-col"><div class="node"><b>📡 Live radar / ADS-B</b><small>What's actually moving now</small></div></div>
+    <div class="arrow">→</div>
+    <div class="flow-col"><div class="node"><b>📦 Shipping &amp; logistics</b><small>Where every unit is</small></div></div>
+    <div class="arrow">→</div>
+    <div class="flow-col"><div class="node"><b>🗄️ SQL databases</b><small>The system of record</small></div></div>
+  </div>
+
+  <h2>In this build</h2>
+  <p class="sub">The demo above is a real production system, proof that the pattern works end-to-end.</p>
+  <div class="proof">
+    <ul>
+      <li>🕑 <b>Attendance punches</b> place every employee at their desk by role.</li>
+      <li>🎓 <b>A training/LMS system's flight hours</b> drive which lessons are running.</li>
+      <li>📡 <b>Live aircraft radar (ADS-B)</b> confirms which are actually airborne and flies them around the pattern.</li>
+      <li>🚗 <b>GPS-tracked vehicles</b> appear in the lot via geofence, and drive in when they arrive.</li>
+      <li>⏪ A <b>day-replay</b> reconstructs the whole day from historical data.</li>
+    </ul>
+  </div>
+
+  <h2>What's under the hood</h2>
+  <div class="cards">
+    <div class="card"><div class="ic">🔌</div><h3>Any source, one adapter</h3><p>Each system sits behind one clean method — including a GPS fleet API with short-lived tokens minted server-side, so no secret ever reaches the browser.</p></div>
+    <div class="card"><div class="ic">⚡</div><h3>Real-time</h3><p>Each feed polls on its own cadence and re-renders continuously — the operation as it is right now, not a nightly report.</p></div>
+    <div class="card"><div class="ic">🧭</div><h3>Correlation &amp; flags</h3><p>Cross-referencing sources surfaces what no single system shows — a resource double-booked, or an asset that just arrived via geofence.</p></div>
+    <div class="card"><div class="ic">🔐</div><h3>Role &amp; location security</h3><p>A permissions model scopes every view by role and by site, so each person sees exactly what they're cleared for.</p></div>
+    <div class="card"><div class="ic">⏪</div><h3>Replay</h3><p>A scrubber reconstructs the whole day from history — rewind to any moment.</p></div>
+    <div class="card"><div class="ic">📱</div><h3>Runs anywhere</h3><p>Pure web — no app to deploy, no plugins. Wall display, laptop, or phone.</p></div>
+  </div>
+
+  <div style="margin-top:22px">
+    <span class="pill">API Integration</span><span class="pill">Real-Time Data</span><span class="pill">Data Visualization</span><span class="pill">REST / JSON</span><span class="pill">Token Auth (JWT)</span><span class="pill">GPS Telematics</span><span class="pill">ADS-B</span><span class="pill">PHP</span><span class="pill">JavaScript</span><span class="pill">HTML5 Canvas</span><span class="pill">SQL</span><span class="pill">Automation</span>
+  </div>
+
+  <footer>
+    <b>Live Operations HQ</b> — a real-time data command center. Modeled on a production system for a multi-site operation; shown with fully anonymized data (names, identifiers and locations are synthetic).<br>
+    <span class="note">Built by Lazaro · add your email / portfolio link here.</span>
+  </footer>
+</div>
+</body>
+</html>
