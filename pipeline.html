@@ -167,7 +167,8 @@
 (function(){
 'use strict';
 var $ = function(s){ return document.querySelector(s); };
-var S = window.HQ_SAMPLES, L = HQ.LAYOUTS;
+var SITES = window.HQ_SITE_SAMPLES, L = HQ.LAYOUTS;
+function S(){ return SITES[state.layoutKey] || SITES.airfield; }   /* this site's own data */
 var state = { srcKey:'api', layoutKey:'airfield', ds:null, mapping:null, built:null };
 
 var view = new HQ.MapView($('#cv'), { onSelect: showDetail });
@@ -188,19 +189,20 @@ function chips(host, items, activeKey, onPick){
 }
 
 function renderChoosers(){
-  chips($('#sources'), Object.keys(S).map(function(k){
-    return { key:k, label:S[k].label, sub:S[k].chip };
+  var set = S();
+  chips($('#sources'), Object.keys(set).map(function(k){
+    return { key:k, label:set[k].label, sub:set[k].name };
   }), state.srcKey, function(k){ state.srcKey = k; load(); });
 
   chips($('#layouts'), Object.keys(L).map(function(k){
     return { key:k, label:L[k].label };
-  }), state.layoutKey, function(k){ state.layoutKey = k; if(state.ds) fillKinds(); rebuild(); });
+  }), state.layoutKey, function(k){ state.layoutKey = k; load(); });   /* switch to that site's data */
 }
 
 /* -------------------------------- loading ------------------------------- */
 
 function load(){
-  var s = S[state.srcKey];
+  var s = S()[state.srcKey];
   try {
     state.ds = HQ.loadSource(s.text, s.name, s.label.replace(/^\S+\s/,''));
   } catch(err){
@@ -256,8 +258,14 @@ function renderLegend(){
 
 function renderZoneMap(){
   var zm = state.built.zoneMap, keys = Object.keys(zm);
-  if(!keys.length){ $('#zoneMap').innerHTML = ''; return; }
-  $('#zoneMap').innerHTML = keys.slice(0,14).map(function(k){
+  var renamed = state.built.entities.filter(function(e){ return e.sourceLabel; });
+  var note = renamed.length
+    ? '<span class="mapchip" title="These rows are shown as ' + HQ.KIND_WORD[renamed[0].kind] + ' on this site, so they get matching names. The source ID stays on each record.">Renamed for this site: ' +
+      renamed.slice(0,3).map(function(e){ return HQ.esc(e.sourceLabel) + ' → <b>' + HQ.esc(e.label) + '</b>'; }).join(', ') +
+      (renamed.length > 3 ? ' +' + (renamed.length - 3) : '') + '</span>'
+    : '';
+  if(!keys.length){ $('#zoneMap').innerHTML = note; return; }
+  $('#zoneMap').innerHTML = note + keys.slice(0,14).map(function(k){
     return '<span class="mapchip" title="' + (zm[k].matched ? 'matched by name' : 'no name match — assigned an area') + '">' +
       HQ.esc(k) + ' → <b>' + HQ.esc(zm[k].zone.name) + '</b>' + (zm[k].matched ? '' : ' *') + '</span>';
   }).join('');
@@ -275,7 +283,7 @@ function renderSchema(){
 function renderJson(){
   var ds = state.ds, m = state.mapping;
   var sample = state.built.entities.slice(0,2).map(function(e){
-    return { id:'e'+(e.i+1), label:e.label, kind:e.kind, area:e.zone.name, state:e.status, source_row:e.row };
+    return { id:'e'+(e.i+1), label:e.label, source_label:e.sourceLabel || undefined, kind:e.kind, area:e.zone.name, state:e.status, source_row:e.row };
   });
   $('#json').textContent = JSON.stringify({
     source: ds.origin + ':' + ds.name,
@@ -292,6 +300,8 @@ function showDetail(e){
   var h = '<div class="t" style="color:' + HQ.statusColor(e.status) + '">' + HQ.esc(e.label) + '</div>';
   h += '<div style="font-size:11.5px;color:var(--dim);margin-bottom:5px;">' +
        HQ.esc(HQ.STATUS_LABEL[e.status]) + ' · ' + HQ.esc(e.zone.name) + '</div>';
+  if(e.sourceLabel) h += '<div style="font-size:11px;color:var(--faint);margin-bottom:5px;">Shown as ' +
+       HQ.esc(HQ.KIND_WORD[e.kind].replace(/s$/,'')) + ' here · source ID <b style="color:var(--ink)">' + HQ.esc(e.sourceLabel) + '</b></div>';
   state.ds.cols.forEach(function(c){
     var v = e.row[c.name];
     h += '<div class="kv"><span>' + HQ.esc(c.name) + '</span><b title="' + HQ.esc(HQ.isBlank(v)?'—':v) + '">' +

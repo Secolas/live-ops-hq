@@ -239,10 +239,11 @@ $('#pasteLoad').addEventListener('click', function(){
   $('#paste').hidden=true; $('#pasteActions').hidden=true; $('#paste').value='';
 });
 $('#sampleBtn').addEventListener('click', function(){
-  var keys = Object.keys(window.HQ_SAMPLES);
+  var set = window.HQ_SITE_SAMPLES[state.layoutKey] || window.HQ_SITE_SAMPLES.airfield;   /* this site's data */
+  var keys = Object.keys(set);
   var k = keys[(keys.indexOf(window._lastSample||'') + 1) % keys.length];
   window._lastSample = k;
-  var s = window.HQ_SAMPLES[k];
+  var s = set[k];
   loadText(s.text, s.name, s.label.replace(/^\S+\s/,''));
 });
 
@@ -301,7 +302,11 @@ function renderZoneEdit(){
             return '<option value="'+z.id+'"'+(z.id===zm[k].zone.id?' selected':'')+'>'+HQ.esc(z.name)+'</option>';
          }).join('') + '</select></div>';
   });
-  h += '<div class="hint">* no name match — the studio picked a free area. Override it here.</div>';
+  h += '<div class="hint">* no name match — the studio picked a fitting free area. Override it here.</div>';
+  var renamed = state.built.entities.filter(function(e){ return e.sourceLabel; });
+  if(renamed.length) h += '<div class="hint" style="margin-top:6px;">Shown as ' + HQ.KIND_WORD[renamed[0].kind] +
+    ' on this site, so labels are renamed (' + HQ.esc(renamed[0].sourceLabel) + ' → ' + HQ.esc(renamed[0].label) +
+    '). The source IDs stay on every record and in the manifest.</div>';
   host.innerHTML = h;
   host.querySelectorAll('select[data-zv]').forEach(function(sel){
     sel.addEventListener('change', function(){
@@ -412,7 +417,8 @@ function manifest(){
       original_file: ds.name
     },
     schema: ds.cols.map(function(c){ return { name:c.name, type:c.kind, fill_rate: c.total ? Math.round(c.filled/c.total*100)/100 : 0 }; }),
-    mapping: { label:m.label, area:m.zone, state:m.status, render_as:HQ.kindFor(layout, m.kind) },
+    mapping: { label:m.label, area:m.zone, state:m.status, render_as:HQ.kindFor(layout, m.kind),
+               relabel: b.entities.some(function(e){ return e.sourceLabel; }) ? 'site-fitting names; source label kept as source_label' : undefined },
     layout: { id: state.layoutKey, name: layout.label.replace(/^\S+\s/,''), areas: layout.zones.map(function(z){ return z.id; }) },
     area_routing: areas,
     row_count: ds.rows.length,
@@ -449,7 +455,7 @@ function renderPromote(){
   });
   $('#pRows').addEventListener('click', function(){
     var rows = state.built.entities.map(function(e){
-      return { id:'e'+(e.i+1), label:e.label, kind:e.kind, area:e.zone.name, state:e.status, source:e.row };
+      return { id:'e'+(e.i+1), label:e.label, source_label:e.sourceLabel || undefined, kind:e.kind, area:e.zone.name, state:e.status, source:e.row };
     });
     download(slug($('#pName').value || ds.name) + '.normalized.json', JSON.stringify(rows, null, 2), 'application/json');
   });

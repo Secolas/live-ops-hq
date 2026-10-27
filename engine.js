@@ -201,7 +201,7 @@ var LAYOUTS = {
   airfield: {
     label:'✈️ Flight school / airfield',
     kinds:['aircraft','person','vehicle','truck','asset','package'],
-    translate:{ forklift:'vehicle', machine:'vehicle' },
+    translate:{ forklift:'vehicle', machine:'vehicle' }, movingPackageAs:'truck',
     zones:[
       {id:'ops',    name:'Ops office',  x:30,  y:30,  w:220, h:150, floor:'office'},
       {id:'class',  name:'Classrooms',  x:30,  y:196, w:220, h:180, floor:'office'},
@@ -214,8 +214,8 @@ var LAYOUTS = {
   },
   warehouse: {
     label:'📦 Warehouse / logistics',
-    kinds:['forklift','truck','package','person','asset'],
-    translate:{ aircraft:'truck', machine:'forklift', vehicle:'forklift' }, movingPackageAs:'truck',
+    kinds:['forklift','truck','package','person','asset','vehicle'],
+    translate:{ aircraft:'truck', machine:'forklift' }, vehicleDefault:'forklift', movingPackageAs:'truck',
     zones:[
       {id:'office',name:'Office',       x:30,  y:30,  w:180, h:160, floor:'office'},
       {id:'recv',  name:'Receiving',    x:30,  y:206, w:180, h:278, floor:'concrete'},
@@ -231,7 +231,7 @@ var LAYOUTS = {
   construction: {
     label:'🏗️ Construction / field site',
     kinds:['machine','truck','person','vehicle','asset'],
-    translate:{ aircraft:'machine', forklift:'machine', package:'asset' },
+    translate:{ aircraft:'machine', forklift:'machine', package:'asset' }, movingPackageAs:'truck',
     zones:[
       {id:'office', name:'Site office',   x:30,  y:30,  w:220, h:160, floor:'office'},
       {id:'store',  name:'Material yard', x:30,  y:206, w:220, h:278, floor:'gravel'},
@@ -314,31 +314,59 @@ function bestStatusCol(ds, label, zone){
   return best;
 }
 
-function inferMapping(ds){
-  var cols = ds.cols, n = ds.rows.length;
-  var label = pickCol(cols, /name|employee|student|driver|unit|tail|registration|tracking|part_?no|asset|sku|title|label/i)
-           || (cols.filter(function(c){ return (c.kind==='text'||c.kind==='category') && c.distinct > n*0.5; })[0]||{}).name
-           || (cols.filter(function(c){ return c.kind!=='number'; })[0]||cols[0]||{}).name;
+/* "Okafor, D." / "Maria Lopez" — what a person's name looks like in a cell */
+var NAME_RE = /^[A-Z][A-Za-z'\-]+(,\s*[A-Z]\.?|\s+[A-Z][A-Za-z'\-]+\.?)(\s+[A-Z][A-Za-z'\-]*\.?)?$/;
+function nameLike(ds, c){
+  var hit = 0, n = 0;
+  for(var i=0;i<ds.rows.length;i++){
+    var v = ds.rows[i][c.name];
+    if(isBlank(v)) continue;
+    n++; if(NAME_RE.test(String(v).trim())) hit++;
+  }
+  return n > 0 && hit / n > 0.7;
+}
 
-  var zone = pickCol(cols, /zone|site|area|warehouse|location|base|building|dept|department|destination|origin|bay|region|branch/i,
-                     ['category','text'])
-          || (cols.filter(function(c){ return c.kind==='category' && c.name!==label && c.distinct>=2 && c.distinct<=12; })[0]||{}).name
+var LABEL_RE = /name|employee|student|driver|picker|worker|technician|operator|unit|tail|registration|tracking|pallet|part_?no|asset|item|title|label|sku/i;
+var ZONE_RE  = /zone|site|area|warehouse|location|base|building|block|aisle|yard|dock|drop|room|floor|hangar|terminal|gate|lot|bay|dept|department|destination|origin|region|branch/i;
+
+function inferMapping(ds){
+  var cols = ds.cols, n = ds.rows.length, kind = guessKind(ds);
+  var unique = function(c){ return c.distinct >= n * 0.9; };
+  var names = cols.filter(function(c){ return c.kind !== 'number' && nameLike(ds, c); });
+
+  /* People are called by their names; things by their own unique ID. */
+  var label =
+       (kind === 'person' && names[0] && names[0].name)
+    || (cols.filter(function(c){ return LABEL_RE.test(c.name) && unique(c) && !(kind !== 'person' && nameLike(ds, c)); })[0] || {}).name
+    || (cols.filter(function(c){ return /(^|_)(id|no|number|code)$/i.test(c.name) && unique(c); })[0] || {}).name
+    || pickCol(cols, LABEL_RE)
+    || (cols.filter(function(c){ return (c.kind==='text'||c.kind==='category') && c.distinct > n*0.5; })[0]||{}).name
+    || (cols.filter(function(c){ return c.kind!=='number'; })[0]||cols[0]||{}).name;
+
+  /* A place is a repeating value — never a column of names or unique IDs. */
+  var placeish = function(c){
+    return (c.kind==='category' || c.kind==='text') && c.name !== label && !nameLike(ds, c) && !unique(c);
+  };
+  var zone = (cols.filter(function(c){ return ZONE_RE.test(c.name) && placeish(c); })[0] || {}).name
+          || (cols.filter(function(c){ return placeish(c) && c.distinct>=2 && c.distinct<=12; })[0]||{}).name
           || null;
 
   var status = pickCol(cols, /status|state|stage|condition|availability|health/i)
             || bestStatusCol(ds, label, zone);
 
-  return { label:label, zone:zone, status:status, kind:guessKind(ds) };
+  return { label:label, zone:zone, status:status, kind:kind };
 }
 
 /* ------------------------------ status model ----------------------------- */
 
+/* Checked in this order — problems first, so "inactive" or "not ok" can't
+   be read as active just because they contain the word. */
 var STATUS_RULES = [
-  { key:'moving',  color:'#4ea8de', re:/transit|airborne|en ?route|moving|driving|flying|dispatch|departed|running/i },
-  { key:'ok',      color:'#22e39c', re:/on.?site|at base|available|delivered|ready|in service|serviceable|active|ok|complete|done|true|yes|open|normal/i },
-  { key:'waiting', color:'#f0a500', re:/idle|waiting|pending|scheduled|hold|low|reorder|queued|standby|maint/i },
-  { key:'alert',   color:'#e0664f', re:/delay|alert|fault|down|critical|overdue|fail|out of service|aog|blocked|expired/i },
-  { key:'off',     color:'#6f7789', re:/inactive|offline|closed|archived|false|no|unknown|retired/i }
+  { key:'alert',   color:'#e0664f', re:/delay|alert|attention|fault|down\b|critical|overdue|fail|out of service|\baog\b|blocked|expired|damage|broken|error|stopped|accident|not ok/i },
+  { key:'off',     color:'#6f7789', re:/inactive|offline|off.?(shift|duty|line)|closed|archived|unknown|retired|not started|^no$|^false$/i },
+  { key:'moving',  color:'#4ea8de', re:/transit|airborne|en ?route|on route|moving|driving|flying|dispatched|departed|running|out for delivery|road test/i },
+  { key:'waiting', color:'#f0a500', re:/idle|waiting|pending|scheduled|on hold|\bhold\b|\blow\b|reorder|queued|standby|maint|charging/i },
+  { key:'ok',      color:'#22e39c', re:/on.?site|at base|at door|available|delivered|ready|in service|serviceable|active|in use|\bok\b|complete|done|true|yes|open|normal|in stock|loading|unloading|picking|working|on shift/i }
 ];
 var STATUS_LABEL = { moving:'In motion', ok:'Active / on site', waiting:'Idle / waiting', alert:'Needs attention', off:'Inactive' };
 
@@ -416,7 +444,7 @@ function matchZones(values, zones, counts, kinds){
 
 /* ------------------------------- entities -------------------------------- */
 
-var TRUCK_RE = /\b(truck|lorry|trailer|semi|rig|tanker|box truck|hgv)\b/i;
+var TRUCK_RE = /\b(truck|lorry|trailer|semi|rig|tanker|box truck|hgv|mixer|dumper|tipper|yard tractor)\b/i;
 var CAR_RE   = /\b(van|car|sedan|pickup|suv|tug|cart|wagon)\b/i;
 
 function rowText(row, skip){
@@ -431,7 +459,7 @@ function rowText(row, skip){
 /* A fleet file mixes vans and trucks: within the vehicle family, each row's
    own words decide which sprite it gets. */
 var FORK_RE    = /\b(forklift|pallet jack|reach truck|lift truck)\b/i;
-var MACHINE_RE = /\b(excavator|digger|bulldozer|dozer|backhoe|loader|grader|skid ?steer)\b/i;
+var MACHINE_RE = /\b(excavator|digger|bulldozer|dozer|backhoe|loader|grader|skid ?steer|telehandler|roller|compactor|crane|piling rig)\b/i;
 
 function rowKind(row, base){
   if(['vehicle','truck','forklift','machine'].indexOf(base) < 0) return base;
@@ -445,10 +473,13 @@ function rowKind(row, base){
 
 /* People wear the same uniforms as on the production HQ map. */
 var ROLE_RULES = [
-  ['instructor', /instructor|pilot|captain|\bcfi\b|examiner|teacher|trainer|supervisor|manager|foreman/i],
+  /* pilot uniform (cap, epaulettes) only for flying roles */
+  ['instructor', /instructor|pilot|captain|\bcfi\b|examiner|first officer/i],
   ['student',    /student|trainee|cadet|intern|apprentice|learner/i],
-  ['mechanic',   /mechanic|technician|\btech\b|maint|engineer|line crew|crew|operator|driver|worker|labou?rer|fitter|welder/i],
-  ['it',         /\bit\b|developer|dispatch|analyst|support/i]
+  /* coveralls / hi-vis for hands-on work */
+  ['mechanic',   /mechanic|technician|\btech\b|maint|engineer|line crew|crew|operator|driver|worker|labou?rer|fitter|welder|picker|packer|loader|rigger|electrician|carpenter|plumber|washer|fuel|forklift|receiver|hand\b|associate/i],
+  /* lanyard + badge for coordinating roles */
+  ['it',         /\bit\b|developer|dispatch|analyst|support|supervisor|manager|foreman|lead\b|coordinator|planner|clerk|controller|safety/i]
 ];
 function roleOf(text){
   for(var i=0;i<ROLE_RULES.length;i++){ if(ROLE_RULES[i][1].test(text)) return ROLE_RULES[i][0]; }
@@ -493,6 +524,30 @@ function packZone(z, list, P, noTag){
            x0: z.x + PAD_X + rack, y0: z.y + PAD_TOP, need:need, score:best };
 }
 
+/* The shape a row takes on this site. A shipment on the move is on a truck;
+   at a warehouse, a vehicle that isn't plainly a car or van is a forklift. */
+function siteKind(row, mapping, layout, moving){
+  var raw = rowKind(row, mapping.kind);
+  if(raw === 'package' && moving && layout.movingPackageAs) return layout.movingPackageAs;
+  if(raw === 'vehicle' && layout.vehicleDefault && !CAR_RE.test(rowText(row))) return layout.vehicleDefault;
+  return kindFor(layout, raw);
+}
+
+/* When a row has to change family for the site (aircraft data on a
+   warehouse plan), give it a name that fits what it now is. The source ID
+   stays on the record. A shipment carried by a truck keeps its tracking no. */
+var FAMILY = { aircraft:'air', vehicle:'ground', truck:'ground', forklift:'ground', machine:'ground',
+               asset:'goods', package:'goods', person:'person' };
+var PREFIX = { truck:'TRK', vehicle:'VAN', forklift:'FL', machine:'MX', asset:'AST', package:'PKG', aircraft:'AC' };
+function relabel(label, kind, idx, used){
+  var d = (String(label).match(/\d+/g) || []).join('').slice(-4) || String(idx + 1);
+  while(d.length < 3) d = '0' + d;
+  var base = PREFIX[kind] + '-' + d, out = base, n = 0;
+  while(used[out]) out = base + String.fromCharCode(65 + (n++));
+  used[out] = 1;
+  return out;
+}
+
 function buildEntities(ds, mapping, layout, presetZoneMap){
   var zones = layout.zones;
   var values = [], seen = {}, i;
@@ -511,7 +566,7 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
   if(mapping.zone){
     ds.rows.forEach(function(row){
       var v = isBlank(row[mapping.zone]) ? '—' : String(row[mapping.zone]);
-      var kd = kindFor(layout, rowKind(row, kindFor(layout, mapping.kind)));
+      var kd = siteKind(row, mapping, layout, false);
       (tally[v] = tally[v] || {})[kd] = (tally[v][kd] || 0) + 1;
     });
     Object.keys(tally).forEach(function(v){
@@ -524,16 +579,20 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
   var skip = {}; [mapping.label, mapping.zone, mapping.status].forEach(function(c){ if(c) skip[c]=1; });
   var headerRole = roleOf(ds.cols.map(function(c){ return c.name; }).join(' '));
 
+  var usedLabels = {};
   var ents = ds.rows.map(function(row, idx){
     var zv = mapping.zone ? (isBlank(row[mapping.zone]) ? '—' : String(row[mapping.zone])) : null;
     var zone = (zv !== null && zmap[zv]) ? zmap[zv].zone : placeable[idx % placeable.length];
-    var kind = kindFor(layout, rowKind(row, kindFor(layout, mapping.kind)));
     var st = mapping.status ? classifyStatus(row[mapping.status]) : 'ok';
-    /* a shipment on the move is on a truck */
-    if(kind === 'package' && st === 'moving' && road && layout.movingPackageAs) kind = layout.movingPackageAs;
+    var kind = siteKind(row, mapping, layout, st === 'moving' && !!road);
+    var raw = rowKind(row, mapping.kind);
+    var label = mapping.label ? String(row[mapping.label]) : ('#' + (idx+1)), sourceLabel = null;
+    if(FAMILY[raw] !== FAMILY[kind] && raw !== 'package' && kind !== 'person' && PREFIX[kind]){
+      sourceLabel = label; label = relabel(label, kind, idx, usedLabels);
+    }
     return {
       i: idx, seed: (idx*7 + 3),
-      label: mapping.label ? String(row[mapping.label]) : ('#' + (idx+1)),
+      label: label, sourceLabel: sourceLabel, sourceKind: raw,
       kind: kind,
       role: kind === 'person' ? (roleOf(rowText(row, skip)) || headerRole || 'frontdesk') : null,
       model: kind === 'aircraft' ? rowModel(row) : null,
@@ -845,7 +904,7 @@ MapView.prototype.stop = function(){ if(this._raf){ cancelAnimationFrame(this._r
 
 MapView.prototype._matches = function(e){
   if(!this.query) return true;
-  return (e.label + ' ' + (e.zoneValue||'') + ' ' + e.status + ' ' + (e.role||'')).toLowerCase().indexOf(this.query) >= 0;
+  return (e.label + ' ' + (e.sourceLabel||'') + ' ' + (e.zoneValue||'') + ' ' + e.status + ' ' + (e.role||'')).toLowerCase().indexOf(this.query) >= 0;
 };
 
 MapView.prototype.readTheme = function(){
@@ -1070,7 +1129,10 @@ MapView.prototype._tag = function(e, p){
 
   var top = p.y - f[1]*P/2;
   var car = !!GROUND_VEH[e.kind];
-  ctx.font = (car ? '700 9.5px ' : (sel ? '700 10px ' : '10px ')) + MONO;
+  /* shrink a little before cutting — a name cut to "Lindgr…" says less */
+  var fs = car ? 9.5 : 10, weight = car || sel ? '700 ' : '';
+  ctx.font = weight + fs + 'px ' + MONO;
+  while(!sel && fs > 8 && ctx.measureText(e.label).width > maxW - 10){ fs -= 0.5; ctx.font = weight + fs + 'px ' + MONO; }
   var s = fitText(ctx, e.label, sel ? 400 : maxW - 10);
   var tw2 = ctx.measureText(s).width, w2 = tw2 + 10, h2 = 14;
   var x2 = p.x - w2/2, y2 = top - h2 - 3;
