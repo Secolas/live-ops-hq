@@ -11,6 +11,9 @@
   --on-pill:#ffffff;                             /* text on a filled status pill */
   --shadow:0 10px 34px rgba(20,30,50,.09);
   --tag-blue:#b8d4ec; --tag-green:#b2e0cb; --tag-amber:#ecd6a6; --tag-violet:#d7c4ef;
+  --accent-text:#8a5a00;                         /* amber that passes on white */
+  --btn-bg:#151922; --btn-ink:#ffffff;           /* primary button */
+  --band:#151922; --band-ink:#ffffff; --band-dim:#c3c9d4; --band-line:#2c3240;
 
   --map-bg:#cfd3da; --map-grid:rgba(20,30,50,.045); --map-zone:#ffffff; --map-road:#e2e6ec;
   --map-line:#d4d9e1; --map-dash:#b4bdca; --map-label:#6a7383; --map-count:#151922;
@@ -28,6 +31,9 @@
   --on-pill:#0a0c12;
   --shadow:0 10px 40px rgba(0,0,0,.45);
   --tag-blue:#2a4a63; --tag-green:#1e5c45; --tag-amber:#5c4718; --tag-violet:#4a3360;
+  --accent-text:#f0a500;
+  --btn-bg:#f0a500; --btn-ink:#10131a;
+  --band:#10131a; --band-ink:#e8ebf2; --band-dim:#a9b1c2; --band-line:#232835;
 
   --map-bg:#1b1e26; --map-grid:rgba(255,255,255,.025); --map-zone:#11151d; --map-road:#0f1118;
   --map-line:#232835; --map-dash:#2a3140; --map-label:#7f899c; --map-count:#e8ebf2;

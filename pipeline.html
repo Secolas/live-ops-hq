@@ -170,6 +170,12 @@ var $ = function(s){ return document.querySelector(s); };
 var SITES = window.HQ_SITE_SAMPLES, L = HQ.LAYOUTS;
 function S(){ return SITES[state.layoutKey] || SITES.airfield; }   /* this site's own data */
 var state = { srcKey:'api', layoutKey:'airfield', ds:null, mapping:null, built:null };
+/* deep link from the showcase: pipeline.html?site=warehouse&source=sheet */
+(function(){
+  var q = new URLSearchParams(location.search);
+  if(L[q.get('site')]) state.layoutKey = q.get('site');
+  if(SITES[state.layoutKey] && SITES[state.layoutKey][q.get('source')]) state.srcKey = q.get('source');
+})();
 
 var view = new HQ.MapView($('#cv'), { onSelect: showDetail });
 view.start();
