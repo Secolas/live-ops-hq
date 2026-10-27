@@ -637,6 +637,10 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
       e.desk = pk.need.desk > 0 && e.kind === 'person';
       e.x = pk.x0 + pk.stepX*(c + 0.5);
       e.y = pk.y0 + pk.stepY*r + slack + (e.quiet ? 2 : TAG_H) + pk.need.desk + f[1]*P/2 + 3;
+      e.cell = { x0: pk.x0 + pk.stepX*c, x1: pk.x0 + pk.stepX*(c+1),
+                 y0: pk.y0 + pk.stepY*r, y1: pk.y0 + pk.stepY*(r+1) };
+      e.headroom = (e.quiet ? 2 : TAG_H) + (e.desk ? pk.need.desk : 0);
+      e.act = actOf(e);
     });
   });
 
@@ -660,6 +664,115 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
   }
   return { entities: ents, zoneMap: zmap, zoneValues: values, P: P };
 }
+
+/* ------------------------------ behaviours ------------------------------ */
+/* Things that are working move like it — inside their own cell on the plan,
+   so they never walk into a neighbour or its name tag.
+     walk    people at work stroll around, pause, and return to their desk
+     look    idle people stay put and glance around
+     shuttle working forklifts run their aisle: load at one end, carry,
+             drop at the other, come back empty
+     work    working machines creep back and forth                          */
+
+var REDUCED = typeof window !== 'undefined' && window.matchMedia &&
+              window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var WALK_SPEED = 22, LIFT_SPEED = 30;                 /* plan units per second */
+
+function actOf(e){
+  var busy = e.status === 'ok' || e.status === 'moving';
+  if(e.kind === 'person') return busy ? 'walk' : (e.status === 'waiting' ? 'look' : null);
+  if(e.kind === 'forklift') return busy ? 'shuttle' : null;
+  if(e.kind === 'machine') return e.status === 'ok' ? 'work' : null;
+  return null;
+}
+
+function rnd(e){                                      /* small seeded RNG per item */
+  e._r = ((e._r || (e.seed * 7919 + 13)) * 1103515245 + 12345) % 2147483648;
+  return e._r / 2147483648;
+}
+
+/* where the centre of a w×h sprite may go inside its cell (tag included) */
+function roomFor(e, w, h){
+  var c = e.cell;
+  if(!c) return { x0:e.x, x1:e.x, y0:e.y, y1:e.y };
+  var span = e.quiet ? w : Math.max(w, Math.min(TAG_W, c.x1 - c.x0 - 6));
+  var r = { x0: c.x0 + span/2 + 3, x1: c.x1 - span/2 - 3,
+            y0: c.y0 + e.headroom + h/2 + 3, y1: c.y1 - h/2 - 3 };
+  if(r.x1 < r.x0){ r.x0 = r.x1 = e.x; }
+  if(r.y1 < r.y0){ r.y0 = r.y1 = e.y; }
+  /* a person never walks above their own desk */
+  if(e.desk){ r.y0 = Math.max(r.y0, e.y); }
+  return r;
+}
+
+function walk(e, now){
+  var B = e._b, P = e.P || 1.5;
+  if(!B){
+    B = e._b = { x:e.x, y:e.y, to:null, trips:0, until: now + rnd(e) * 4000 };
+  }
+  if(B.to){
+    var k = (now - B.t0) / B.dur;
+    if(k < 1){
+      var x = B.fx + (B.to.x - B.fx) * k, y = B.fy + (B.to.y - B.fy) * k;
+      var dx = B.to.x - B.fx, dy = B.to.y - B.fy;
+      var face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      return { x:x, y:y, moving:true, walking:true, dir: dx >= 0 ? 1 : -1, face:face };
+    }
+    B.x = B.to.x; B.y = B.to.y; B.to = null; B.trips++;
+    B.until = now + (e.desk && B.atDesk ? 4000 + rnd(e) * 6000 : 1500 + rnd(e) * 3500);
+  }
+  if(now < B.until) return { x:B.x, y:B.y, moving:false, face:'down' };
+  /* next leg: people with a desk go back to it every other trip */
+  var room = roomFor(e, 16*P, 16*P);
+  var home = e.desk && (B.trips % 2 === 1);
+  var tx = home ? e.x : room.x0 + rnd(e) * (room.x1 - room.x0);
+  var ty = home ? e.y : room.y0 + rnd(e) * (room.y1 - room.y0);
+  B.atDesk = home;
+  var d = Math.sqrt(Math.pow(tx - B.x, 2) + Math.pow(ty - B.y, 2));
+  if(d < 4){ B.until = now + 1500; return { x:B.x, y:B.y, moving:false, face:'down' }; }
+  B.fx = B.x; B.fy = B.y; B.to = { x:tx, y:ty }; B.t0 = now; B.dur = d / WALK_SPEED * 1000;
+  return { x:B.x, y:B.y, moving:false, face:'down' };
+}
+
+function look(e, now){
+  var faces = ['down', 'left', 'down', 'right'];
+  var i = Math.floor((now / 2600) + e.seed) % faces.length;
+  return { x:e.x, y:e.y, moving:false, face:faces[i] };
+}
+
+function shuttle(e, now){
+  var B = e._b, P = e.P || 1.5, c = e.cell;
+  if(!B){
+    var vertical = c && (c.y1 - c.y0) > (c.x1 - c.x0) * 1.2;
+    var room = vertical ? roomFor(e, 14*P, 26*P) : roomFor(e, 26*P, 14*P);
+    var a = vertical ? room.y0 : room.x0, b = vertical ? room.y1 : room.x1;
+    B = e._b = { vertical:vertical, a:a, b:b, pos: vertical ? e.y : e.x, dir: 1,
+                 until: now + rnd(e) * 2500, carry: true, last: now };
+    if(b - a < 12) B.still = true;
+  }
+  if(B.still) return { x:e.x, y:e.y, moving:false };
+  var dt = Math.min(0.1, (now - B.last) / 1000); B.last = now;
+  var orient;
+  if(now >= B.until){
+    B.pos += B.dir * LIFT_SPEED * dt;
+    if(B.pos >= B.b || B.pos <= B.a){                /* reached an end: drop or pick up */
+      B.pos = Math.max(B.a, Math.min(B.b, B.pos));
+      B.dir = -B.dir; B.carry = !B.carry;
+      B.until = now + 1200 + rnd(e) * 1300;
+    }
+  }
+  var goingBack = B.dir < 0;
+  if(B.vertical) orient = goingBack ? 'right' : 'left';       /* forks lead the way */
+  else orient = goingBack ? 'up' : 'mirror';
+  return B.vertical ? { x:e.x, y:B.pos, moving:false, orient:orient, carry:B.carry }
+                    : { x:B.pos, y:e.y, moving:false, orient:orient, carry:B.carry };
+}
+
+function work(e, now){
+  return { x: e.x + Math.sin(now / 1400 + e.seed) * 6, y:e.y, moving:false };
+}
+
+var ACTS = { walk:walk, look:look, shuttle:shuttle, work:work };
 
 /* ------------------------------ pixel art ------------------------------- */
 /* Palettes and sprites ported from the production HQ map (presentation.html)
@@ -778,7 +891,7 @@ var ART = {
 
   /* forklift in the car's flat style, forks left, carrying a carton while working */
   forklift: function(p, e, frame, col){
-    var carry = e.status === 'ok' || e.status === 'moving';
+    var carry = e._carry !== undefined ? e._carry : (e.status === 'ok' || e.status === 'moving');
     p.r(1,2,26,14,'rgba(0,0,0,.3)');
     p.r(0,3,8,2,'#9aa3b2'); p.r(0,9,8,2,'#9aa3b2');
     if(carry){
@@ -915,7 +1028,7 @@ MapView.prototype.readTheme = function(){
   return this.theme;
 };
 
-MapView.prototype._pos = function(e){
+MapView.prototype._pos = function(e, now){
   if(e.travel){
     var r = e.travel.road, tr = e.travel;
     tr.t += tr.speed * tr.dir;
@@ -924,6 +1037,7 @@ MapView.prototype._pos = function(e){
     var y = tr.lane < 0 ? r.y + r.h/2 : r.y + r.h/2 + (tr.lane ? 26 : -26);
     return { x: r.x + 30 + tr.t*(r.w - 60), y: y, moving:true, dir:tr.dir };
   }
+  if(e.act && !REDUCED && ACTS[e.act]) return ACTS[e.act](e, now);
   return { x:e.x, y:e.y, moving:false, dir:1 };
 };
 
@@ -1058,7 +1172,7 @@ MapView.prototype.draw = function(ts){
 
   var self = this, frame = Math.floor((ts || 0) / 160) % 4;
   var list = this.entities.map(function(e){
-    var p = self._pos(e); e._x = p.x; e._y = p.y; e._p = p; return e;
+    var p = self._pos(e, ts || 0); e._x = p.x; e._y = p.y; e._p = p; return e;
   });
   list.sort(function(a,b){ return a._y - b._y; });               /* nearer things overlap farther ones */
   this._drawn = list;
@@ -1072,11 +1186,13 @@ MapView.prototype._sprite = function(e, p, frame){
   var ctx = this.ctx, k = this.k, on = this._matches(e), col = statusColor(e.status);
   var f = FOOT[e.kind] || FOOT.person, P = e.P || 1.5;
   var orient = 'up', w = f[0]*P, h = f[1]*P;
-  if(e.kind === 'aircraft' && p.moving){ orient = p.dir < 0 ? 'left' : 'right'; w = f[1]*P; h = f[0]*P; }
+  if(p.orient){ orient = p.orient; if(orient === 'right' || orient === 'left'){ w = f[1]*P; h = f[0]*P; } }
+  else if(e.kind === 'aircraft' && p.moving){ orient = p.dir < 0 ? 'left' : 'right'; w = f[1]*P; h = f[0]*P; }
   else if(GROUND_VEH[e.kind] && p.moving && p.dir > 0) orient = 'mirror';
   else if(e.docked && !p.moving){ orient = 'left'; w = f[1]*P; h = f[0]*P; }   /* trailer to the doors */
   var frameNow = (p.moving || (e.kind === 'machine' && e.status === 'ok')) ? frame : 0;
-  if(e.kind === 'person') e.dir = p.moving ? (p.dir > 0 ? 'right' : 'left') : 'down';
+  if(e.kind === 'person') e.dir = p.face || (p.moving ? (p.dir > 0 ? 'right' : 'left') : 'down');
+  e._carry = p.carry;
   var ox = p.x - w/2, oy = p.y - h/2;
 
   ctx.globalAlpha = on ? 1 : 0.22;
@@ -1088,13 +1204,13 @@ MapView.prototype._sprite = function(e, p, frame){
   }
   ctx.setTransform(1,0,0,1,0,0);
 
-  if(e.desk && !p.moving){
-    ART.desk(new Pix(ctx, k, p.x - 8*P, oy - TAG_H - 15*P, P, 16, 16, 'up'), e.role);
+  if(e.desk && !e.travel){                                        /* the desk stays where it is */
+    ART.desk(new Pix(ctx, k, e.x - 8*P, e.y - 8*P - TAG_H - 15*P, P, 16, 16, 'up'), e.role);
   }
   ART[e.kind] ? ART[e.kind](new Pix(ctx, k, ox, oy, P, f[0], f[1], orient), e, frameNow, col, p.moving)
               : ART.person(new Pix(ctx, k, ox, oy, P, 16, 16, 'up'), e, 0, col);
   ctx.globalAlpha = 1;
-  var deskH = (e.desk && !p.moving) ? 15*P : 0;
+  var deskH = (e.desk && !p.walking && !e.travel) ? 15*P : 0;
   e._bb = [ox, oy - deskH - TAG_H, w, h + deskH + TAG_H];
 };
 
@@ -1107,6 +1223,7 @@ MapView.prototype._tag = function(e, p){
   if(!on || ((many || e.quiet) && !this.query && !sel0)) return;
   var ctx = this.ctx, k = this.k, col = statusColor(e.status);
   var f = (e.docked && !p.moving) ? footOf(e) : (FOOT[e.kind] || FOOT.person), P = e.P || 1.5, sel = e === this.selected;
+  if(p.orient === 'right' || p.orient === 'left') f = [f[1], f[0]];      /* upright forklift */
   ctx.save(); ctx.setTransform(k,0,0,k,0,0);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
   var maxW = Math.max(40, (e.cellW || 120) - 6);
