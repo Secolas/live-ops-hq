@@ -123,6 +123,9 @@
     border-radius:20px;border:1px solid var(--accent);background:var(--panel);}
   .cta h2{margin:0;font-size:clamp(28px,3.6vw,40px);line-height:1.12;}
   .cta p{margin:12px 0 0;font-size:18px;line-height:1.6;color:var(--dim);}
+  .cta-act{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+  .addr{margin:0;font-size:14px;color:var(--dim);overflow-wrap:anywhere;}
+  .addr a{font-weight:600;}
   .note{margin:16px 0 0;font-size:13px;color:var(--dim);}
   footer{margin-top:96px;border-top:1px solid var(--line);background:var(--panel);}
   footer .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:center;padding-top:22px;padding-bottom:22px;font-size:14px;color:var(--dim);}
@@ -167,6 +170,7 @@
       <div class="ctas">
         <a class="btn primary" data-mail data-subject="Sample file for a live map" href="#contact">Email us a sample file</a>
         <a class="btn ghost" href="pipeline.html">Try the live demo</a>
+        <a class="btn ghost" href="presentation.html">See live production example</a>
       </div>
     </div>
   </section>
@@ -279,7 +283,10 @@
           <h2>Have a spreadsheet nobody looks at?</h2>
           <p>Email it over and we'll send it back as a live map of your site.</p>
         </div>
-        <a class="btn primary" data-mail data-subject="Live map for our site" data-show-address href="#contact">Email us</a>
+        <div class="cta-act">
+          <a class="btn primary" data-mail data-subject="Live map for our site" href="#contact">Email us</a>
+          <p class="addr">or write to <a data-mail data-show-address href="#contact">—</a></p>
+        </div>
       </div>
       <p class="note">Demo data is synthetic. Files you try in the Source Studio stay in your browser.</p>
     </div>
@@ -304,12 +311,12 @@
 'use strict';
 
 /* One place for the contact address — every "Email us" link uses it. */
-var CONTACT_EMAIL = '[YOUR EMAIL]';
+var CONTACT_EMAIL = 'lazaro.gonzalez.work@gmail.com';
 
 document.querySelectorAll('[data-mail]').forEach(function(a){
   var subj = a.getAttribute('data-subject');
   a.href = 'mailto:' + CONTACT_EMAIL + (subj ? '?subject=' + encodeURIComponent(subj) : '');
-  if(a.hasAttribute('data-show-address')) a.textContent = 'Email ' + CONTACT_EMAIL;
+  if(a.hasAttribute('data-show-address')) a.textContent = CONTACT_EMAIL;
 });
 
 /* ---------------- industry picker, driving the real engine ---------------- */
