@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Live Operations HQ — Real-Time Data Command Center</title>
+<meta name="description" content="Any source a business runs on — live feeds, CSV exports, FTP drops, spreadsheets, vendor reports, SQL dumps, JSON APIs — normalized into one real-time visual command center.">
 <style>
   :root{ --bg:#0d0f15; --panel:#141821; --line:#232835; --ink:#e8ebf2; --dim:#99a2b4; --accent:#f0a500;
     --c-ins:#4ea8de; --c-stu:#f0a500; --c-off:#c77dff; --c-mec:#e0664f; --c-fd:#22e39c; }
@@ -51,7 +52,7 @@
 
   <div class="eyebrow">Integration &amp; Data Visualization</div>
   <h1>One system to <span class="g">see everything</span> move</h1>
-  <p class="lede">Give me any source a business runs on — <b>a punch-in/out clock, an LMS or training-hours system, scheduling &amp; dispatch, GPS trackers, live radar, shipping &amp; logistics, moving-parts &amp; asset tracking, IoT sensors</b> — and I connect them into <b>one real-time visual command center</b> that anyone can read at a glance. The live demo below is the real thing, running on anonymized data.</p>
+  <p class="lede">Give me any source a business runs on — <b>a punch-in/out clock, an LMS, scheduling &amp; dispatch, GPS trackers, live radar, shipping &amp; logistics, IoT sensors</b>, or just the files it already produces — <b>CSV exports, nightly FTP drops, spreadsheets, vendor reports, SQL dumps, JSON APIs</b> — and it becomes <b>one live picture of your operation</b>: your people, vehicles, aircraft and assets moving on your own layout, readable at a glance by anyone. Three live demos below, all on anonymized data.</p>
 
   <div class="srcrow">
     <span class="src"><span class="d" style="background:var(--c-fd)"></span>Punch in / out (any clock)</span>
@@ -63,6 +64,11 @@
     <span class="src"><span class="d" style="background:#f78da7"></span>Moving parts / assets</span>
     <span class="src"><span class="d" style="background:#c77dff"></span>Weather</span>
     <span class="src"><span class="d" style="background:#7a8394"></span>SQL databases</span>
+    <span class="src"><span class="d" style="background:var(--c-ins)"></span>CSV exports</span>
+    <span class="src"><span class="d" style="background:#9b8cff"></span>FTP / SFTP drops</span>
+    <span class="src"><span class="d" style="background:var(--c-fd)"></span>Spreadsheets</span>
+    <span class="src"><span class="d" style="background:var(--c-stu)"></span>Vendor reports</span>
+    <span class="src"><span class="d" style="background:#4ecdc4"></span>REST / JSON APIs</span>
   </div>
 
   <div class="stagewrap">
@@ -70,6 +76,31 @@
     <iframe class="demo" src="presentation.html" title="Live Operations HQ demo" loading="lazy"></iframe>
   </div>
   <p class="openlink">Tip: click people, aircraft or vehicles for detail, search by name/tail, or hit <b>⏱ Replay day</b> to scrub the day. &nbsp;·&nbsp; <a href="presentation.html" target="_blank">Open the demo full-screen ↗</a></p>
+
+  <h2>Any source becomes the same map</h2>
+  <p class="sub">The demo above is one operation wired up. This is the engine behind it: give it a CSV export, a nightly FTP drop, a spreadsheet, a vendor report, an API or a SQL dump, and it works out what every column means and puts the rows on <b>your</b> floor plan — as people, vehicles, aircraft and assets. Switch the business type and the same rows move into a warehouse, a construction site or a depot.</p>
+
+  <div class="stagewrap">
+    <div class="stage-bar"><span>ANY SOURCE → A LIVE MAP · CSV · FTP DROP · SPREADSHEET · VENDOR REPORT · JSON API · SQL EXPORT</span><span class="stage-live"><span class="dot"></span>LIVE</span></div>
+    <iframe class="demo" src="pipeline.html" title="Any source becomes a live map" loading="lazy" style="height:1340px;"></iframe>
+  </div>
+  <p class="openlink">Pick a source, then pick a business type — the map rebuilds both times. Click anyone on it for their full record. &nbsp;·&nbsp; <a href="pipeline.html" target="_blank">Open it full-screen ↗</a></p>
+
+  <div class="cards" style="margin-top:22px;">
+    <div class="card"><div class="ic">🧪</div><h3>It reads the file as it is</h3><p>Comma, semicolon, tab or pipe; quoted fields; a header buried under a vendor's report title; nested JSON; <code>NULL</code> and <code>N/A</code> markers. Detected, not configured.</p></div>
+    <div class="card"><div class="ic">🧭</div><h3>It works out what columns mean</h3><p>Which column is the name, which is the place, which is the state — inferred from the column names <i>and</i> the values, then shown to you so you can correct it.</p></div>
+    <div class="card"><div class="ic">🏢</div><h3>Your layout, not a template</h3><p>Hangar and apron, or aisles and loading dock, or blocks and a crane pad. The areas are your site; the file's locations get routed into them.</p></div>
+    <div class="card"><div class="ic">👁️</div><h3>People, not bar charts</h3><p>Rows become things anyone recognizes — a person at a desk, a van on the road, an aircraft on the apron — with colour showing state at a glance.</p></div>
+  </div>
+
+  <h2>Connect your own source in a few minutes</h2>
+  <p class="sub">The same engine, as a tool: load a file, confirm the field mapping, promote it. Promoting writes a connector manifest — endpoint, refresh interval, field mapping, area routing — that the HQ runs on a schedule.</p>
+
+  <div class="stagewrap">
+    <div class="stage-bar"><span>SOURCE STUDIO · LOAD → MAP FIELDS → PROMOTE</span><span class="stage-live"><span class="dot"></span>LIVE</span></div>
+    <iframe class="demo" src="studio.html" title="Source Studio — load, map fields, promote" loading="lazy" style="height:1420px;"></iframe>
+  </div>
+  <p class="openlink">Drop in one of your own CSV or JSON files — it is parsed in your browser and never uploaded anywhere. &nbsp;·&nbsp; <a href="studio.html" target="_blank">Open the studio full-screen ↗</a></p>
 
   <h2>Every source, one view</h2>
   <p class="sub">Each system speaks its own language. I normalize them behind a small adapter layer, then render them together — live.</p>
@@ -92,6 +123,13 @@
     <div class="flow-col"><div class="node"><b>📦 Shipping &amp; logistics</b><small>Where every unit is</small></div></div>
     <div class="arrow">→</div>
     <div class="flow-col"><div class="node"><b>🗄️ SQL databases</b><small>The system of record</small></div></div>
+  </div>
+  <div class="flow" style="margin-top:14px;">
+    <div class="flow-col"><div class="node"><b>📄 CSV / spreadsheet exports</b><small>What the old system can already email you</small></div></div>
+    <div class="arrow">→</div>
+    <div class="flow-col"><div class="node"><b>🗄️ FTP / SFTP drops</b><small>Nightly files, any delimiter</small></div></div>
+    <div class="arrow">→</div>
+    <div class="flow-col"><div class="node"><b>🧾 Vendor reports</b><small>Header buried under the preamble</small></div></div>
   </div>
 
   <h2>In this build</h2>
@@ -117,7 +155,7 @@
   </div>
 
   <div style="margin-top:22px">
-    <span class="pill">API Integration</span><span class="pill">Real-Time Data</span><span class="pill">Data Visualization</span><span class="pill">REST / JSON</span><span class="pill">Token Auth (JWT)</span><span class="pill">GPS Telematics</span><span class="pill">ADS-B</span><span class="pill">PHP</span><span class="pill">JavaScript</span><span class="pill">HTML5 Canvas</span><span class="pill">SQL</span><span class="pill">Automation</span>
+    <span class="pill">API Integration</span><span class="pill">Real-Time Data</span><span class="pill">Data Visualization</span><span class="pill">REST / JSON</span><span class="pill">Token Auth (JWT)</span><span class="pill">GPS Telematics</span><span class="pill">ADS-B</span><span class="pill">PHP</span><span class="pill">JavaScript</span><span class="pill">HTML5 Canvas</span><span class="pill">SQL</span><span class="pill">Automation</span><span class="pill">CSV / TSV</span><span class="pill">FTP / SFTP</span><span class="pill">Spreadsheets</span><span class="pill">ETL &amp; Normalization</span><span class="pill">Report Automation</span><span class="pill">Field Mapping</span><span class="pill">Schema Inference</span><span class="pill">Connector Manifests</span>
   </div>
 
   <footer>

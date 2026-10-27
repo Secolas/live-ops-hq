@@ -4,7 +4,14 @@
 
 Give a business any source it runs on — a punch-in/out clock, an LMS or training-hours system, scheduling & dispatch, GPS trackers, live radar, shipping & logistics, moving-parts & asset tracking, IoT sensors — and this turns them into **one real-time visual command center** that anyone can read at a glance: who's on-site, what's active, where every asset is, right now.
 
-This repo is a **working, anonymized demo** of a real production system. Open `index.html` for the showcase page, or `presentation.html` for the map by itself. It runs offline — all data is baked in and synthetic (names, identifiers and locations are fake).
+This repo is a **working, anonymized demo** of a real production system. It runs offline — all data is baked in and synthetic (names, identifiers and locations are fake).
+
+| Page | What it is |
+|---|---|
+| `index.html` | The showcase — start here. |
+| `presentation.html` | The production ops map on its own. |
+| `pipeline.html` | **Any source → the same map.** Pick a CSV / FTP drop / spreadsheet / vendor report / JSON API / SQL export, then pick a business type. The engine reads the format, works out what each column means, and renders the rows as people, vehicles, aircraft or assets on that layout. |
+| `studio.html` | **The tool.** Load your own file, confirm the field mapping, and *promote* the source — which writes a connector manifest (endpoint, refresh interval, field mapping, area routing) the HQ runs on a schedule. Files are parsed in the browser and never uploaded. |
 
 > **Live demo:** host this folder on GitHub Pages and share the link.
 
@@ -17,6 +24,16 @@ A top-down operations map rendered live from several sources at once:
 - **Vehicles** parked in a lot (one drives in) — from a **GPS telematics API**, with "at base" decided by a geofence.
 - **Click** any person, aircraft or vehicle for detail; **search** by name or tail; hit **⏱ Replay day** to scrub the whole day from history.
 
+## Any source, not just live feeds
+
+Most operations already emit the data — it just arrives as files nobody looks at. The engine in `pipeline.html` / `studio.html` takes those as they are:
+
+- **Formats** — comma, semicolon, tab or pipe delimited; quoted fields; nested JSON flattened one level; `NULL` / `N/A` / `—` treated as empty; currency symbols, thousands separators and percentages read as numbers.
+- **Vendor reports** — a header buried under title and account lines is found by taking the widest row; footers are dropped.
+- **Column meaning** — each column typed (date / number / category / boolean / text) with distinct counts and fill rate, then the *label*, *area* and *state* fields inferred from both column names and the values themselves.
+- **Your layout** — four site plans ship in the demo (airfield, warehouse, construction site, fleet depot). The file's own location values are matched to your area names where they match, assigned to free areas where they don't, and the routing is shown so an operator can override it.
+- **Promote** — the confirmed mapping is written as a connector manifest. Adding a source is a manifest, not a code change.
+
 ## Architecture
 
 ```mermaid
@@ -28,6 +45,9 @@ flowchart LR
   E[📡 Live radar / ADS-B] --> HQ
   F[📦 Shipping / logistics] --> HQ
   G[🗄️ SQL databases] --> HQ
+  H[📄 CSV / spreadsheet exports] --> HQ
+  I[🗄️ FTP / SFTP drops] --> HQ
+  J[🧾 Vendor reports] --> HQ
   HQ[["LIVE HQ — normalize · correlate · render · replay"]] --> MAP[/🗺️ One real-time map/]
 ```
 
@@ -39,7 +59,7 @@ In the demo, the map's data calls are intercepted and served from baked-in anony
 
 ## Tech
 
-`PHP` · `JavaScript` · `HTML5 Canvas` · `MySQL` · `REST / JSON` · `Token auth (JWT)` · `GPS telematics` · `ADS-B` · `Real-time polling` · `Role- & site-scoped access control` · zero front-end dependencies.
+`PHP` · `JavaScript` · `HTML5 Canvas` · `MySQL` · `REST / JSON` · `Token auth (JWT)` · `GPS telematics` · `ADS-B` · `Real-time polling` · `CSV / TSV / pipe / JSON parsing` · `Schema inference` · `Field mapping` · `Role- & site-scoped access control` · zero front-end dependencies.
 
 ## About
 
