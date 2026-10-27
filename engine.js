@@ -199,7 +199,9 @@ function loadSource(text, name, origin){
 
 var LAYOUTS = {
   airfield: {
-    label:'✈️ Flight school / airfield', kinds:['aircraft','person','vehicle'],
+    label:'✈️ Flight school / airfield',
+    kinds:['aircraft','person','vehicle','truck','asset','package'],
+    translate:{ forklift:'vehicle', machine:'vehicle' },
     zones:[
       {id:'ops',    name:'Ops office',  x:30,  y:30,  w:220, h:150, floor:'office'},
       {id:'class',  name:'Classrooms',  x:30,  y:196, w:220, h:180, floor:'office'},
@@ -211,7 +213,9 @@ var LAYOUTS = {
     ]
   },
   warehouse: {
-    label:'📦 Warehouse / logistics', kinds:['asset','person','vehicle'],
+    label:'📦 Warehouse / logistics',
+    kinds:['forklift','truck','package','person','asset'],
+    translate:{ aircraft:'truck', machine:'forklift', vehicle:'forklift' }, movingPackageAs:'truck',
     zones:[
       {id:'office',name:'Office',       x:30,  y:30,  w:180, h:160, floor:'office'},
       {id:'recv',  name:'Receiving',    x:30,  y:206, w:180, h:278, floor:'concrete'},
@@ -219,13 +223,15 @@ var LAYOUTS = {
       {id:'b',     name:'Aisle B',      x:378, y:30,  w:136, h:454, floor:'concrete', racks:true},
       {id:'c',     name:'Aisle C',      x:530, y:30,  w:136, h:454, floor:'concrete', racks:true},
       {id:'pack',  name:'Packing',      x:682, y:30,  w:288, h:140, floor:'concrete'},
-      {id:'dock',  name:'Loading dock', x:682, y:186, w:288, h:150, floor:'tarmac'},
+      {id:'dock',  name:'Loading dock', x:682, y:186, w:288, h:150, floor:'tarmac', dock:true},
       {id:'yard',  name:'Yard',         x:682, y:352, w:288, h:132, floor:'lot'},
       {id:'gate',  name:'Gate road',    x:30,  y:500, w:940, h:100, floor:'road', road:true}
     ]
   },
   construction: {
-    label:'🏗️ Construction / field site', kinds:['person','vehicle','asset'],
+    label:'🏗️ Construction / field site',
+    kinds:['machine','truck','person','vehicle','asset'],
+    translate:{ aircraft:'machine', forklift:'machine', package:'asset' },
     zones:[
       {id:'office', name:'Site office',   x:30,  y:30,  w:220, h:160, floor:'office'},
       {id:'store',  name:'Material yard', x:30,  y:206, w:220, h:278, floor:'gravel'},
@@ -237,7 +243,9 @@ var LAYOUTS = {
     ]
   },
   depot: {
-    label:'🚚 Fleet depot / dispatch', kinds:['vehicle','truck','person','asset'],
+    label:'🚚 Fleet depot / dispatch',
+    kinds:['vehicle','truck','person','asset','package'],
+    translate:{ aircraft:'truck', forklift:'vehicle', machine:'truck' }, movingPackageAs:'truck',
     zones:[
       {id:'bays',  name:'Service bays', x:30,  y:30,  w:340, h:220, floor:'concrete'},
       {id:'wash',  name:'Wash',         x:386, y:30,  w:200, h:220, floor:'concrete'},
@@ -249,10 +257,21 @@ var LAYOUTS = {
   }
 };
 
+/* Planes belong on an airfield. Anywhere else a source's rows take the
+   shape that site actually has: trucks at a warehouse or depot, machines on
+   a construction site. */
+var KIND_LABEL = { person:'👤 People', vehicle:'🚗 Cars / vans', truck:'🚚 Trucks', forklift:'🏗️ Forklifts',
+                   machine:'🚜 Machines', aircraft:'✈️ Aircraft', asset:'📦 Assets', package:'🏷️ Shipments' };
+var KIND_WORD  = { person:'people', vehicle:'vehicles', truck:'trucks', forklift:'forklifts',
+                   machine:'machines', aircraft:'aircraft', asset:'assets', package:'shipments' };
+function kindFor(layout, kind){ return (layout && layout.translate && layout.translate[kind]) || kind; }
+
 /* --------------------------- field interpretation ------------------------ */
 
 var KIND_WORDS = {
   aircraft:/aircraft|plane|tail|flight|airborne|cessna|piper|n\d{3}|rotor/i,
+  machine :/excavator|digger|bulldozer|dozer|backhoe|loader|grader|crane|plant_?id/i,
+  forklift:/forklift|pallet.?jack|reach.?truck|lift.?truck/i,
   truck   :/truck|lorry|trailer|haul|rig|tanker|freight|semi/i,
   vehicle :/vehicle|van|car|fleet|driver|tug|forklift|odometer|unit/i,
   person  :/employee|staff|person|people|student|instructor|technician|operator|crew|worker|name/i,
@@ -263,7 +282,7 @@ var KIND_WORDS = {
 function guessKind(ds){
   var names = ds.cols.map(function(c){ return c.name; }).join(' ');
   var text = names + ' ' + ds.name;
-  var order = ['aircraft','truck','package','vehicle','asset','person'];
+  var order = ['aircraft','machine','forklift','truck','package','vehicle','asset','person'];
   for(var i=0;i<order.length;i++){ if(KIND_WORDS[order[i]].test(text)) return order[i]; }
   return 'person';
 }
@@ -341,7 +360,24 @@ function statusColor(key){
 
 function norm(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
 
-function matchZones(values, zones, counts){
+var SUIT = {
+  person:   { office:3, concrete:2, tarmac:1, gravel:1, dirt:1, lot:1 },
+  vehicle:  { lot:3, tarmac:2, concrete:1 },
+  truck:    { dock:4, lot:3, tarmac:2, gravel:1, concrete:1 },
+  forklift: { racks:4, concrete:3, dock:3, tarmac:2 },
+  machine:  { dirt:4, gravel:3, concrete:2, tarmac:2 },
+  aircraft: { tarmac:3, concrete:3 },
+  asset:    { racks:3, concrete:3, gravel:3, tarmac:2, office:1 },
+  package:  { racks:3, concrete:3, dock:3, tarmac:2, lot:1, office:1 }
+};
+function suits(kind, z){
+  var t = SUIT[kind] || SUIT.person, s = t[z.floor] || 0;
+  if(z.racks && t.racks) s = Math.max(s, t.racks);
+  if(z.dock && t.dock) s = Math.max(s, t.dock);
+  return s;
+}
+
+function matchZones(values, zones, counts, kinds){
   var map = {}, used = {}, i, j;
   for(i=0;i<values.length;i++){
     var v = norm(values[i]), bestZ = null, bestScore = 0;
@@ -358,15 +394,22 @@ function matchZones(values, zones, counts){
     map[values[i]] = { zone: bestScore > 0 ? bestZ : null, matched: bestScore > 0 };
     if(bestScore > 0) used[bestZ.id] = 1;
   }
-  /* leftovers: biggest group of rows to the biggest free area, then wrap */
+  /* Leftovers, biggest group first: an area that suits what the rows are
+     (forklifts to racked aisles, trucks to the dock, people indoors), free
+     areas before shared ones, then the larger area.                       */
   var area = function(z){ return z.w * z.h; };
-  var free = zones.filter(function(z){ return !used[z.id] && !z.road; }).sort(function(a,b){ return area(b)-area(a); });
-  var all  = zones.filter(function(z){ return !z.road; }).sort(function(a,b){ return area(b)-area(a); });
   var left = values.filter(function(v){ return !map[v].zone; });
   if(counts) left.sort(function(a,b){ return (counts[b]||0) - (counts[a]||0); });
-  left.forEach(function(v, k){
-    var pool = free.length ? free : all;
-    map[v].zone = pool[k % pool.length];
+  left.forEach(function(v){
+    var kind = kinds && kinds[v];
+    var cands = zones.filter(function(z){ return !z.road; }).map(function(z){
+      return { z:z, s:suits(kind, z), free: used[z.id] ? 0 : 1 };
+    });
+    cands.sort(function(A,B){
+      return ((B.s>0) - (A.s>0)) || (B.free - A.free) || (B.s - A.s) || (area(B.z) - area(A.z));
+    });
+    map[v].zone = cands[0].z;
+    used[cands[0].z.id] = 1;
   });
   return map;
 }
@@ -374,7 +417,7 @@ function matchZones(values, zones, counts){
 /* ------------------------------- entities -------------------------------- */
 
 var TRUCK_RE = /\b(truck|lorry|trailer|semi|rig|tanker|box truck|hgv)\b/i;
-var CAR_RE   = /\b(van|car|sedan|pickup|suv|tug|forklift|cart|wagon)\b/i;
+var CAR_RE   = /\b(van|car|sedan|pickup|suv|tug|cart|wagon)\b/i;
 
 function rowText(row, skip){
   var t = '';
@@ -387,9 +430,14 @@ function rowText(row, skip){
 
 /* A fleet file mixes vans and trucks: within the vehicle family, each row's
    own words decide which sprite it gets. */
+var FORK_RE    = /\b(forklift|pallet jack|reach truck|lift truck)\b/i;
+var MACHINE_RE = /\b(excavator|digger|bulldozer|dozer|backhoe|loader|grader|skid ?steer)\b/i;
+
 function rowKind(row, base){
-  if(base !== 'vehicle' && base !== 'truck') return base;
+  if(['vehicle','truck','forklift','machine'].indexOf(base) < 0) return base;
   var text = rowText(row);
+  if(FORK_RE.test(text)) return 'forklift';
+  if(MACHINE_RE.test(text)) return 'machine';
   if(TRUCK_RE.test(text)) return 'truck';
   if(CAR_RE.test(text)) return 'vehicle';
   return base;
@@ -415,11 +463,13 @@ function rowModel(row){
 }
 
 /* Native sprite sizes in art pixels (16 = one production map tile). */
-var FOOT = { person:[16,16], vehicle:[24,14], truck:[40,16], aircraft:[48,64], asset:[14,14], package:[13,12] };
+var FOOT = { person:[16,16], vehicle:[24,14], truck:[40,16], forklift:[26,14], machine:[36,24],
+             aircraft:[48,64], asset:[14,14], package:[13,12] };
+function footOf(e){ var f = FOOT[e.kind] || FOOT.person; return e.docked ? [f[1], f[0]] : f; }
 var TAG_H = 17, TAG_W = 62, PAD_X = 14, PAD_TOP = 30, PAD_BOT = 8, RACK_W = 22;
 
-function needOf(kind, P, office, noTag){
-  var f = FOOT[kind] || FOOT.person;
+function needOf(e, P, office, noTag){
+  var kind = e.kind, f = footOf(e);
   var desk = (office && kind === 'person') ? 15*P : 0;
   return noTag ? { w: f[0]*P + 8, h: f[1]*P + desk + 8, desk: desk }
                : { w: Math.max(f[0]*P + 8, TAG_W), h: f[1]*P + TAG_H + desk + 6, desk: desk };
@@ -429,7 +479,7 @@ function packZone(z, list, P, noTag){
   var office = z.floor === 'office';
   var need = { w:0, h:0, desk:0 };
   list.forEach(function(e){
-    var n = needOf(e.kind, P, office, noTag);
+    var n = needOf(e, P, office, noTag);
     need.w = Math.max(need.w, n.w); need.h = Math.max(need.h, n.h); need.desk = Math.max(need.desk, n.desk);
   });
   var rack = z.racks ? RACK_W : 0;
@@ -453,9 +503,22 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
       seen[v]++;
     }
   }
-  var zmap = presetZoneMap || matchZones(values, zones, seen);
   var placeable = zones.filter(function(z){ return !z.road; });
   var road = zones.filter(function(z){ return z.road; })[0] || null;
+
+  /* each location's usual kind of thing, so unmatched ones go somewhere fitting */
+  var tally = {}, majority = {};
+  if(mapping.zone){
+    ds.rows.forEach(function(row){
+      var v = isBlank(row[mapping.zone]) ? '—' : String(row[mapping.zone]);
+      var kd = kindFor(layout, rowKind(row, kindFor(layout, mapping.kind)));
+      (tally[v] = tally[v] || {})[kd] = (tally[v][kd] || 0) + 1;
+    });
+    Object.keys(tally).forEach(function(v){
+      majority[v] = Object.keys(tally[v]).sort(function(a,b){ return tally[v][b] - tally[v][a]; })[0];
+    });
+  }
+  var zmap = presetZoneMap || matchZones(values, zones, seen, majority);
 
   /* a role can come from a column's values, or from what the columns are called */
   var skip = {}; [mapping.label, mapping.zone, mapping.status].forEach(function(c){ if(c) skip[c]=1; });
@@ -464,14 +527,17 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
   var ents = ds.rows.map(function(row, idx){
     var zv = mapping.zone ? (isBlank(row[mapping.zone]) ? '—' : String(row[mapping.zone])) : null;
     var zone = (zv !== null && zmap[zv]) ? zmap[zv].zone : placeable[idx % placeable.length];
-    var kind = rowKind(row, mapping.kind);
+    var kind = kindFor(layout, rowKind(row, kindFor(layout, mapping.kind)));
+    var st = mapping.status ? classifyStatus(row[mapping.status]) : 'ok';
+    /* a shipment on the move is on a truck */
+    if(kind === 'package' && st === 'moving' && road && layout.movingPackageAs) kind = layout.movingPackageAs;
     return {
       i: idx, seed: (idx*7 + 3),
       label: mapping.label ? String(row[mapping.label]) : ('#' + (idx+1)),
       kind: kind,
       role: kind === 'person' ? (roleOf(rowText(row, skip)) || headerRole || 'frontdesk') : null,
       model: kind === 'aircraft' ? rowModel(row) : null,
-      status: mapping.status ? classifyStatus(row[mapping.status]) : 'ok',
+      status: st,
       zoneValue: zv, zone: zone, row: row
     };
   });
@@ -479,6 +545,7 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
   var byZone = {};
   ents.forEach(function(e){
     if(road && e.status === 'moving') return;           /* drawn on the road, not in its area */
+    e.docked = e.kind === 'truck' && !!e.zone.dock;
     (byZone[e.zone.id] = byZone[e.zone.id] || []).push(e);
   });
 
@@ -505,7 +572,7 @@ function buildEntities(ds, mapping, layout, presetZoneMap){
     var list = byZone[zid], z = list[0].zone, pk = packZone(z, list, P, quiet[zid]);
     list.forEach(function(e, k){
       var c = k % pk.cols, r = Math.floor(k / pk.cols);
-      var f = FOOT[e.kind] || FOOT.person;
+      var f = footOf(e);
       var slack = Math.max(0, pk.stepY - pk.need.h) / 2;
       e.P = P; e.cellW = pk.stepX; e.dir = 'down'; e.quiet = !!quiet[zid];
       e.desk = pk.need.desk > 0 && e.kind === 'person';
@@ -650,6 +717,34 @@ var ART = {
     p.r(27,-1,4,2,'#0b0d12'); p.r(33,-1,4,2,'#0b0d12'); p.r(27,15,4,2,'#0b0d12'); p.r(33,15,4,2,'#0b0d12');
   },
 
+  /* forklift in the car's flat style, forks left, carrying a carton while working */
+  forklift: function(p, e, frame, col){
+    var carry = e.status === 'ok' || e.status === 'moving';
+    p.r(1,2,26,14,'rgba(0,0,0,.3)');
+    p.r(0,3,8,2,'#9aa3b2'); p.r(0,9,8,2,'#9aa3b2');
+    if(carry){
+      p.r(0,1,8,12,'#c49a6c'); p.r(0,1,8,3,'#d8b48a'); p.r(3,1,2,12,'#e9dcc0'); p.r(5,8,2,2,'#f4f4ef');
+    }
+    p.r(8,0,2,14,'#3a3f4a');
+    p.r(10,1,14,12,col);
+    p.r(12,2,8,10,'rgba(20,22,28,.45)'); p.r(12,2,8,1,'#2b303b'); p.r(12,11,8,1,'#2b303b');
+    p.r(15,5,3,4,'#1a1e28');
+    p.r(22,2,4,10,'#2b303b');
+    p.r(11,-1,4,2,'#0b0d12'); p.r(11,13,4,2,'#0b0d12'); p.r(19,-1,4,2,'#0b0d12'); p.r(19,13,4,2,'#0b0d12');
+  },
+
+  /* excavator, top-down: tracks, house in status colour, boom and bucket left */
+  machine: function(p, e, frame, col){
+    p.r(9,2,28,24,'rgba(0,0,0,.3)');
+    p.r(8,0,28,6,'#2b2b2b'); p.r(8,18,28,6,'#2b2b2b');
+    for(var x = 9 + (frame % 3); x < 36; x += 3){ p.r(x,1,1,4,'#4a4a4a'); p.r(x,19,1,4,'#4a4a4a'); }
+    p.r(12,4,18,16,col); p.r(12,4,18,2,'rgba(255,255,255,.25)');
+    p.r(28,6,5,12,'#2b303b');
+    p.r(14,6,7,8,'rgba(190,225,255,.75)'); p.r(14,6,7,1,'rgba(255,255,255,.5)');
+    p.r(4,10,9,4,col); p.r(4,13,9,1,'rgba(0,0,0,.25)'); p.r(11,9,3,6,'#3a3f4a');
+    p.r(0,7,5,10,'#3a3a3a'); p.r(0,7,1,10,'#9aa3b2');
+  },
+
   /* production drawPlane (nose up), cheat line / fin / wingtips in status colour */
   aircraft: function(p, e, frame, col, moving){
     var M = (e.model || '').toUpperCase();
@@ -700,6 +795,7 @@ var ART = {
 var LW = 1000, LH = 620, TL = 24;          /* plan units; one floor tile */
 var MONO = 'ui-monospace,"SF Mono",Menlo,Consolas,monospace';
 var SHORT = { moving:'MOVING', ok:'READY', waiting:'IDLE', alert:'ATTN', off:'OFF' };
+var GROUND_VEH = { vehicle:1, truck:1, forklift:1, machine:1 };
 
 function MapView(canvas, opts){
   this.cv = canvas;
@@ -855,6 +951,13 @@ MapView.prototype._buildFloor = function(){
         R(z.x, z.y, z.w, 1.5, '#5a6270'); R(z.x, z.y+z.h-1.5, z.w, 1.5, '#5a6270');
         for(var rx = z.x + 14; rx < z.x + z.w - 14; rx += 2*TL) R(rx, z.y + z.h/2 - 1, TL - 4, 2, 'rgba(232,196,86,.6)');
     }
+    if(z.dock){                                                       /* dock doors + bumpers */
+      for(var dxx = z.x + 20; dxx + 40 < z.x + z.w - 10; dxx += 62){
+        R(dxx, z.y, 40, 9, '#5b6270'); R(dxx + 2, z.y + 2, 36, 5, '#3a4050');
+        R(dxx, z.y + 9, 40, 3, '#f0c000');
+        for(var hz = dxx; hz < dxx + 40; hz += 8) R(hz, z.y + 9, 4, 3, '#1a1e28');
+      }
+    }
     if(z.racks){                                                      /* warehouse shelving */
       [z.x + 6, z.x + z.w - 6 - RACK_W + 6].forEach(function(rx){
         R(rx, z.y + 12, RACK_W - 6, z.h - 24, '#4a505c');
@@ -911,7 +1014,9 @@ MapView.prototype._sprite = function(e, p, frame){
   var f = FOOT[e.kind] || FOOT.person, P = e.P || 1.5;
   var orient = 'up', w = f[0]*P, h = f[1]*P;
   if(e.kind === 'aircraft' && p.moving){ orient = p.dir < 0 ? 'left' : 'right'; w = f[1]*P; h = f[0]*P; }
-  else if((e.kind === 'vehicle' || e.kind === 'truck') && p.moving && p.dir > 0) orient = 'mirror';
+  else if(GROUND_VEH[e.kind] && p.moving && p.dir > 0) orient = 'mirror';
+  else if(e.docked && !p.moving){ orient = 'left'; w = f[1]*P; h = f[0]*P; }   /* trailer to the doors */
+  var frameNow = (p.moving || (e.kind === 'machine' && e.status === 'ok')) ? frame : 0;
   if(e.kind === 'person') e.dir = p.moving ? (p.dir > 0 ? 'right' : 'left') : 'down';
   var ox = p.x - w/2, oy = p.y - h/2;
 
@@ -927,7 +1032,7 @@ MapView.prototype._sprite = function(e, p, frame){
   if(e.desk && !p.moving){
     ART.desk(new Pix(ctx, k, p.x - 8*P, oy - TAG_H - 15*P, P, 16, 16, 'up'), e.role);
   }
-  ART[e.kind] ? ART[e.kind](new Pix(ctx, k, ox, oy, P, f[0], f[1], orient), e, p.moving ? frame : 0, col, p.moving)
+  ART[e.kind] ? ART[e.kind](new Pix(ctx, k, ox, oy, P, f[0], f[1], orient), e, frameNow, col, p.moving)
               : ART.person(new Pix(ctx, k, ox, oy, P, 16, 16, 'up'), e, 0, col);
   ctx.globalAlpha = 1;
   var deskH = (e.desk && !p.moving) ? 15*P : 0;
@@ -942,7 +1047,7 @@ MapView.prototype._tag = function(e, p){
   var many = this.entities.length > 60, sel0 = e === this.selected;
   if(!on || ((many || e.quiet) && !this.query && !sel0)) return;
   var ctx = this.ctx, k = this.k, col = statusColor(e.status);
-  var f = FOOT[e.kind] || FOOT.person, P = e.P || 1.5, sel = e === this.selected;
+  var f = (e.docked && !p.moving) ? footOf(e) : (FOOT[e.kind] || FOOT.person), P = e.P || 1.5, sel = e === this.selected;
   ctx.save(); ctx.setTransform(k,0,0,k,0,0);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
   var maxW = Math.max(40, (e.cellW || 120) - 6);
@@ -964,7 +1069,7 @@ MapView.prototype._tag = function(e, p){
   }
 
   var top = p.y - f[1]*P/2;
-  var car = e.kind === 'vehicle' || e.kind === 'truck';
+  var car = !!GROUND_VEH[e.kind];
   ctx.font = (car ? '700 9.5px ' : (sel ? '700 10px ' : '10px ')) + MONO;
   var s = fitText(ctx, e.label, sel ? 400 : maxW - 10);
   var tw2 = ctx.measureText(s).width, w2 = tw2 + 10, h2 = 14;
@@ -1036,7 +1141,8 @@ global.HQ = {
   LAYOUTS:LAYOUTS, inferMapping:inferMapping, guessKind:guessKind,
   classifyStatus:classifyStatus, statusColor:statusColor,
   STATUS_RULES:STATUS_RULES, STATUS_LABEL:STATUS_LABEL,
-  matchZones:matchZones, buildEntities:buildEntities, MapView:MapView
+  matchZones:matchZones, buildEntities:buildEntities, MapView:MapView,
+  kindFor:kindFor, KIND_LABEL:KIND_LABEL, KIND_WORD:KIND_WORD
 };
 
 })(typeof window !== 'undefined' ? window : this);

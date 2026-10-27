@@ -258,14 +258,14 @@ function opts(cols, sel, allowNone){
 function renderMapping(){
   var ds = state.ds, m = state.mapping;
   if(!ds){ $('#mapWrap').innerHTML = '<p class="empty">Load a source first.</p>'; return; }
-  var kinds = { person:'👤 People', vehicle:'🚗 Cars / vans', truck:'🚚 Trucks', aircraft:'✈️ Aircraft', asset:'📦 Assets', package:'🏷️ Shipments' };
+  var lay = L[state.layoutKey], eff = HQ.kindFor(lay, m.kind);   /* planes stay on the airfield */
   var h =
     '<div class="auto">✓ guessed from your column names and values</div>' +
     '<label class="f">Label — what to call each row</label><select id="mLabel">' + opts(ds.cols, m.label) + '</select>' +
     '<label class="f">Area — where it belongs on the plan</label><select id="mZone">' + opts(ds.cols, m.zone, true) + '</select>' +
     '<label class="f">State — how it should look</label><select id="mStatus">' + opts(ds.cols, m.status, true) + '</select>' +
     '<label class="f">Render each row as</label><select id="mKind">' +
-      Object.keys(kinds).map(function(k){ return '<option value="'+k+'"'+(k===m.kind?' selected':'')+'>'+kinds[k]+'</option>'; }).join('') +
+      lay.kinds.map(function(k){ return '<option value="'+k+'"'+(k===eff?' selected':'')+'>'+HQ.KIND_LABEL[k]+'</option>'; }).join('') +
     '</select>' +
     '<label class="f">Site layout</label><select id="mLayout">' +
       Object.keys(L).map(function(k){ return '<option value="'+k+'"'+(k===state.layoutKey?' selected':'')+'>'+L[k].label+'</option>'; }).join('') +
@@ -276,14 +276,15 @@ function renderMapping(){
     $('#'+id).addEventListener('change', function(){
       state.mapping = {
         label: $('#mLabel').value, zone: $('#mZone').value || null,
-        status: $('#mStatus').value || null, kind: $('#mKind').value
+        status: $('#mStatus').value || null,
+        kind: id === 'mKind' ? $('#mKind').value : state.mapping.kind
       };
       state.zoneOverride = {};
       rebuild();
     });
   });
   $('#mLayout').addEventListener('change', function(){
-    state.layoutKey = this.value; state.zoneOverride = {}; rebuild();
+    state.layoutKey = this.value; state.zoneOverride = {}; renderMapping(); rebuild();
   });
 }
 
@@ -362,8 +363,9 @@ function renderCounts(){
 
 function renderLegend(){
   var by = {}; state.built.entities.forEach(function(e){ by[e.status]=1; });
-  var word = { person:'people', vehicle:'vehicles', truck:'trucks', aircraft:'aircraft', asset:'assets', package:'shipments' };
-  var h = '<span>One shape per row — rendered as <b style="color:var(--ink)">'+(word[state.mapping.kind]||state.mapping.kind)+'</b></span>';
+  var shown = {}; state.built.entities.forEach(function(e){ shown[e.kind] = 1; });
+  var h = '<span>One shape per row — rendered as <b style="color:var(--ink)">'+
+          Object.keys(shown).map(function(k){ return HQ.KIND_WORD[k] || k; }).join(' + ')+'</b></span>';
   ['moving','ok','waiting','alert','off'].forEach(function(k){
     if(!by[k]) return;
     h += '<span><i style="background:'+HQ.statusColor(k)+'"></i>'+HQ.STATUS_LABEL[k]+'</span>';
@@ -410,7 +412,7 @@ function manifest(){
       original_file: ds.name
     },
     schema: ds.cols.map(function(c){ return { name:c.name, type:c.kind, fill_rate: c.total ? Math.round(c.filled/c.total*100)/100 : 0 }; }),
-    mapping: { label:m.label, area:m.zone, state:m.status, render_as:m.kind },
+    mapping: { label:m.label, area:m.zone, state:m.status, render_as:HQ.kindFor(layout, m.kind) },
     layout: { id: state.layoutKey, name: layout.label.replace(/^\S+\s/,''), areas: layout.zones.map(function(z){ return z.id; }) },
     area_routing: areas,
     row_count: ds.rows.length,

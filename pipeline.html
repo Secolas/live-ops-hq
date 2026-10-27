@@ -194,7 +194,7 @@ function renderChoosers(){
 
   chips($('#layouts'), Object.keys(L).map(function(k){
     return { key:k, label:L[k].label };
-  }), state.layoutKey, function(k){ state.layoutKey = k; rebuild(); });
+  }), state.layoutKey, function(k){ state.layoutKey = k; if(state.ds) fillKinds(); rebuild(); });
 }
 
 /* -------------------------------- loading ------------------------------- */
@@ -243,9 +243,10 @@ function renderCounts(){
 function renderLegend(){
   var by = {};
   state.built.entities.forEach(function(e){ by[e.status] = 1; });
-  var kindWord = { person:'people', vehicle:'vehicles', truck:'trucks', aircraft:'aircraft', asset:'assets', package:'shipments' };
+  var shown = {};
+  state.built.entities.forEach(function(e){ shown[e.kind] = 1; });
   var h = '<span>Each shape is one row — shown as <b style="color:var(--ink)">' +
-          (kindWord[state.mapping.kind] || state.mapping.kind) + '</b></span>';
+          Object.keys(shown).map(function(k){ return HQ.KIND_WORD[k] || k; }).join(' + ') + '</b></span>';
   ['moving','ok','waiting','alert','off'].forEach(function(k){
     if(!by[k]) return;
     h += '<span><i style="background:' + HQ.statusColor(k) + '"></i>' + HQ.STATUS_LABEL[k] + '</span>';
@@ -280,7 +281,7 @@ function renderJson(){
     source: ds.origin + ':' + ds.name,
     format: ds.format,
     read_at: ds.loadedAt,
-    interpreted_as: { label:m.label, area:m.zone, state:m.status, shown_as:m.kind },
+    interpreted_as: { label:m.label, area:m.zone, state:m.status, shown_as:HQ.kindFor(L[state.layoutKey], m.kind) },
     entity_count: state.built.entities.length,
     entities: sample
   }, null, 2) + (state.built.entities.length > 2 ? '\n… ' + (state.built.entities.length - 2) + ' more' : '');
@@ -313,17 +314,23 @@ function fillMapping(){
   $('#mLabel').innerHTML  = opts(c, m.label);
   $('#mZone').innerHTML   = opts(c, m.zone, true);
   $('#mStatus').innerHTML = opts(c, m.status, true);
-  $('#mKind').innerHTML   = ['person','vehicle','truck','aircraft','asset','package'].map(function(k){
-    return '<option value="' + k + '"' + (k===m.kind?' selected':'') + '>' +
-      ({person:'👤 People',vehicle:'🚗 Cars / vans',truck:'🚚 Trucks',aircraft:'✈️ Aircraft',asset:'📦 Assets',package:'🏷️ Shipments'}[k]) +
-      '</option>'; }).join('');
+  fillKinds();
+}
+
+/* only the shapes this kind of site has — planes stay on the airfield */
+function fillKinds(){
+  var lay = L[state.layoutKey], eff = HQ.kindFor(lay, state.mapping.kind);
+  $('#mKind').innerHTML = lay.kinds.map(function(k){
+    return '<option value="' + k + '"' + (k===eff?' selected':'') + '>' + HQ.KIND_LABEL[k] + '</option>';
+  }).join('');
 }
 
 ['#mLabel','#mZone','#mStatus','#mKind'].forEach(function(id){
   $(id).addEventListener('change', function(){
     state.mapping = {
       label: $('#mLabel').value, zone: $('#mZone').value || null,
-      status: $('#mStatus').value || null, kind: $('#mKind').value
+      status: $('#mStatus').value || null,
+      kind: id === '#mKind' ? $('#mKind').value : state.mapping.kind   /* keep the source's own kind */
     };
     rebuild();
   });
