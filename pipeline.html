@@ -4,12 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Any Source → A Live Map — Live Operations HQ</title>
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
 <style>
-  :root{
-    --bg:#0d0f15; --panel:#141821; --panel2:#0e1119; --line:#232835;
-    --ink:#e8ebf2; --dim:#99a2b4; --faint:#6f7789; --accent:#f0a500;
-    --blue:#4ea8de; --green:#22e39c; --red:#e0664f; --violet:#c77dff;
-  }
   *{box-sizing:border-box}
   [hidden]{display:none !important}
   html,body{margin:0}
@@ -34,7 +31,7 @@
   .chip{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:20px;
     padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;}
   .chip:hover{border-color:var(--blue);}
-  .chip.on{border-color:var(--blue);background:#182030;}
+  .chip.on{border-color:var(--blue);background:var(--soft);}
   .chip small{color:var(--faint);}
 
   .grid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-top:16px;align-items:start;}
@@ -44,13 +41,13 @@
   .side h2:first-child{margin-top:0;}
   .empty{color:var(--faint);font-size:12.5px;margin:0;}
 
-  .stage{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:var(--shadow);}
   .stagebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
     padding:8px 12px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--dim);letter-spacing:.4px;}
-  .live{display:flex;align-items:center;gap:5px;font-weight:700;color:#0a0c12;background:var(--green);
+  .live{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--on-pill);background:var(--green);
     padding:3px 9px;border-radius:6px;font-size:10.5px;}
-  .live .d{width:6px;height:6px;border-radius:50%;background:#0a0c12;animation:bl 1.4s infinite;}
-  canvas{display:block;width:100%;height:auto;background:#0a0c12;cursor:crosshair;}
+  .live .d{width:6px;height:6px;border-radius:50%;background:var(--on-pill);animation:bl 1.4s infinite;}
+  canvas{display:block;width:100%;height:auto;background:var(--map-bg);cursor:crosshair;}
   .legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim);}
   .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
 
@@ -75,10 +72,10 @@
   .col .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tag{font-size:9px;letter-spacing:.8px;text-transform:uppercase;border:1px solid var(--line);
     border-radius:4px;padding:1px 5px;color:var(--dim);flex:none;}
-  .tag.number{color:var(--blue);border-color:#2a4a63;}
-  .tag.date{color:var(--green);border-color:#1e5c45;}
-  .tag.category{color:var(--accent);border-color:#5c4718;}
-  .tag.bool{color:var(--violet);border-color:#4a3360;}
+  .tag.number{color:var(--blue);border-color:var(--tag-blue);}
+  .tag.date{color:var(--green);border-color:var(--tag-green);}
+  .tag.category{color:var(--accent);border-color:var(--tag-amber);}
+  .tag.bool{color:var(--violet);border-color:var(--tag-violet);}
   .col .meta{color:var(--faint);font-size:10px;margin-top:1px;}
 
   .detail{min-height:54px;}
@@ -105,7 +102,7 @@
       <div class="eyebrow">Live Operations HQ · Any source</div>
       <h1>Whatever your data is, <span class="g">it becomes a map</span></h1>
     </div>
-    <div class="badge"><span class="dot"></span>LIVE DEMO · SYNTHETIC DATA</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="themebtn" data-theme-toggle type="button">☾ Dark mode</button><div class="badge"><span class="dot"></span>LIVE DEMO · SYNTHETIC DATA</div></div>
   </div>
 
   <p class="lede">Your business already produces the data — a <b>CSV export</b>, a <b>nightly FTP drop</b>, a <b>spreadsheet</b>, a <b>vendor report</b>, an <b>API</b>, a <b>SQL dump</b>. This engine reads any of them, works out what each column means, and turns the rows into <b>people, vehicles, aircraft and assets moving on your own floor plan</b>. Pick a source and a site below — the map rebuilds itself.</p>
@@ -175,6 +172,7 @@ var state = { srcKey:'api', layoutKey:'airfield', ds:null, mapping:null, built:n
 
 var view = new HQ.MapView($('#cv'), { onSelect: showDetail });
 view.start();
+window.addEventListener('hq-theme', function(){ view.readTheme(); });
 
 /* ------------------------------- choosers ------------------------------- */
 
@@ -245,8 +243,8 @@ function renderCounts(){
 function renderLegend(){
   var by = {};
   state.built.entities.forEach(function(e){ by[e.status] = 1; });
-  var kindWord = { person:'people', vehicle:'vehicles', aircraft:'aircraft', asset:'assets', package:'shipments' };
-  var h = '<span>Each shape is one row — shown as <b style="color:#e8ebf2">' +
+  var kindWord = { person:'people', vehicle:'vehicles', truck:'trucks', aircraft:'aircraft', asset:'assets', package:'shipments' };
+  var h = '<span>Each shape is one row — shown as <b style="color:var(--ink)">' +
           (kindWord[state.mapping.kind] || state.mapping.kind) + '</b></span>';
   ['moving','ok','waiting','alert','off'].forEach(function(k){
     if(!by[k]) return;
@@ -315,9 +313,9 @@ function fillMapping(){
   $('#mLabel').innerHTML  = opts(c, m.label);
   $('#mZone').innerHTML   = opts(c, m.zone, true);
   $('#mStatus').innerHTML = opts(c, m.status, true);
-  $('#mKind').innerHTML   = ['person','vehicle','aircraft','asset','package'].map(function(k){
+  $('#mKind').innerHTML   = ['person','vehicle','truck','aircraft','asset','package'].map(function(k){
     return '<option value="' + k + '"' + (k===m.kind?' selected':'') + '>' +
-      ({person:'👤 People',vehicle:'🚗 Vehicles',aircraft:'✈️ Aircraft',asset:'📦 Assets',package:'🏷️ Shipments'}[k]) +
+      ({person:'👤 People',vehicle:'🚗 Cars / vans',truck:'🚚 Trucks',aircraft:'✈️ Aircraft',asset:'📦 Assets',package:'🏷️ Shipments'}[k]) +
       '</option>'; }).join('');
 }
 

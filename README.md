@@ -33,6 +33,8 @@ Most operations already emit the data — it just arrives as files nobody looks 
 - **Column meaning** — each column typed (date / number / category / boolean / text) with distinct counts and fill rate, then the *label*, *area* and *state* fields inferred from both column names and the values themselves.
 - **Your layout** — four site plans ship in the demo (airfield, warehouse, construction site, fleet depot). The file's own location values are matched to your area names where they match, assigned to free areas where they don't, and the routing is shown so an operator can override it.
 - **Promote** — the confirmed mapping is written as a connector manifest. Adding a source is a manifest, not a code change.
+- **One art style** — the any-source map draws with the production map's own pixel art: the same 16 px characters in role uniforms (instructor, student, mechanic, IT, office), the same skin and hair palettes, the white Cessna/Piper airframes, the same top-down car, office tile / hangar concrete / apron tarmac floors and the yellow room labels. Trucks, crates and cartons are drawn in the same style. Status shows as the tag's top edge, an aircraft's trim and chip, or a vehicle's paint.
+- **Light & dark** — every page has a light / dark switch (`theme.css`, `theme.js`); light is the default and the choice is remembered. The showcase passes it down to the embedded demos.
 
 ## Architecture
 
