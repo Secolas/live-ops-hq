@@ -13,7 +13,7 @@ This repo is a **working, anonymized demo** of a real production system. It runs
 | `pipeline.html` | **Any source → the same map.** Pick a CSV / FTP drop / spreadsheet / vendor report / JSON API / SQL export, then pick a business type. The engine reads the format, works out what each column means, and renders the rows as people, vehicles, aircraft or assets on that layout. |
 | `studio.html` | **The tool.** Load your own file, confirm the field mapping, and *promote* the source — which writes a connector manifest (endpoint, refresh interval, field mapping, area routing) the HQ runs on a schedule. Files are parsed in the browser and never uploaded. |
 
-> **Live demo:** host this folder on GitHub Pages and share the link.
+> **Live demo:** [live-ops-hq.vercel.app](https://live-ops-hq.vercel.app/)
 
 ## What the demo shows
 
@@ -68,6 +68,10 @@ In the demo, the map's data calls are intercepted and served from baked-in anony
 
 ## About
 
-Built by **Lazaro** — integration & data-visualization engineer. _Add your email / portfolio link here._
+Built by **Laz Gonzalez**, AI solutions developer & full-stack engineer.
+
+- Portfolio: [lazgonzalez.vercel.app](https://lazgonzalez.vercel.app/)
+- Email: [lazaro.gonzalez.work@gmail.com](mailto:lazaro.gonzalez.work@gmail.com)
+- LinkedIn: [linkedin.com/in/lazaro-gonzalez-work](https://linkedin.com/in/lazaro-gonzalez-work)
 
 MIT License — see [LICENSE](LICENSE). All data in this repo is synthetic.
