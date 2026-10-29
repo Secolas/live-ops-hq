@@ -74,4 +74,4 @@ Built by **Laz Gonzalez**, AI solutions developer & full-stack engineer.
 - Email: [lazaro.gonzalez.work@gmail.com](mailto:lazaro.gonzalez.work@gmail.com)
 - LinkedIn: [linkedin.com/in/lazaro-gonzalez-work](https://linkedin.com/in/lazaro-gonzalez-work)
 
-MIT License — see [LICENSE](LICENSE). All data in this repo is synthetic.
+Copyright © 2026 Lazaro Gonzalez. All rights reserved. The code is shared for viewing only; no copying, reuse, or redistribution without written permission. See [LICENSE](LICENSE). All data in this repo is synthetic.
